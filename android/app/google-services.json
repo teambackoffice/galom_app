@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "107539432647",
+    "project_id": "chundakadan-app",
+    "storage_bucket": "chundakadan-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:107539432647:android:fc0d6f6bab37a420362ae2",
+        "android_client_info": {
+          "package_name": "com.location_tracker_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2Z0LLN8GPToyMHAbgdpOPvjG1X1QPMgo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
