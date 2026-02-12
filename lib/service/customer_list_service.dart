@@ -39,6 +39,7 @@ class CustomerListService {
         );
       }
     } catch (e) {
+      print("customer list error: $e");
       throw Exception('Network error: $e');
     }
   }

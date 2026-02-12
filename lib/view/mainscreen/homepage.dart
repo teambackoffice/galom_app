@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:location_tracker_app/view/bottom_nav/bottom_nav.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/invoice.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/location_track.dart';
 import 'package:location_tracker_app/view/mainscreen/profile_page/profile_page.dart';
@@ -34,22 +33,50 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
-      body: Stack(
-        children: [
-          _pages[_selectedIndex],
-          Positioned(
-            left: 16,
-            right: 16,
-            bottom: 10, // Adjust this value to move it higher/lower
-            child: ModernBottomNavBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              selectedItemColor: const Color(0xFF667EEA),
-              unselectedItemColor: Colors.grey[600],
-              backgroundColor: const Color(0xFFF5F5F7),
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          selectedItemColor: const Color(0xFF667EEA),
+          unselectedItemColor: Colors.grey[600],
+          backgroundColor: Colors.white,
+          elevation: 0,
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
+          iconSize: 24,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle),
+              label: 'Attendance',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.business_center_rounded),
+              label: 'Sales',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.add_task), label: 'Tasks'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt),
+              label: 'Invoice',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -116,10 +116,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
           );
         },
       ),
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 30.0), // 👈 move up by 20px
-        child: _buildUniqueFloatingButton(),
-      ),
+      floatingActionButton: _buildUniqueFloatingButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
@@ -640,7 +637,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
         return Transform.scale(
           scale: _fabAnimation.value,
           child: Container(
-            margin: EdgeInsets.only(bottom: 50, right: 4),
+            margin: EdgeInsets.only(right: 4),
             child: Stack(
               alignment: Alignment.center,
               children: [
