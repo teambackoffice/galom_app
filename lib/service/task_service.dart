@@ -10,7 +10,6 @@ class EmployeeTaskService {
 
   Future<List<EmployeeTaskModal>> getTaskDetails() async {
     try {
-      // Read stored data
       String? salesPerson = await _storage.read(key: 'sales_person_id');
       String? sid = await _storage.read(key: 'sid');
 
@@ -26,12 +25,24 @@ class EmployeeTaskService {
 
       final response = await http.get(url, headers: headers);
 
+      // ✅ PRINT COMPLETE RESPONSE
+      print("========== TASK DETAILS API ==========");
+      print("URL: $url");
+      print("Sales Person: $salesPerson");
+      print("SID: $sid");
+      print("Status Code: ${response.statusCode}");
+      print("Reason: ${response.reasonPhrase}");
+      print("Headers: ${response.headers}");
+      print("Raw Body: ${response.body}");
+      print("======================================");
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
+        print("Decoded JSON: $data");
+
         if (data is Map<String, dynamic> && data.containsKey('message')) {
           final taskModal = EmployeeTaskModal.fromJson(data);
-
           return [taskModal];
         } else {
           throw Exception(
@@ -44,6 +55,7 @@ class EmployeeTaskService {
         );
       }
     } catch (e) {
+      print("TASK API ERROR: $e");
       rethrow;
     }
   }

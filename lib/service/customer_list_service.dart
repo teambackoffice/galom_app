@@ -23,14 +23,20 @@ class CustomerListService {
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
 
-      // PRINT STATUS CODE
+      // ✅ PRINT COMPLETE RESPONSE DETAILS
+      print("===== CUSTOMER LIST API RESPONSE =====");
+      print("URL: $url");
+      print("Status Code: ${response.statusCode}");
+      print("Headers: ${response.headers}");
+      print("Body: ${response.body}");
+      print("======================================");
 
       if (response.statusCode == 200) {
         try {
           final decoded = jsonDecode(response.body);
-
           return CustomerListModal.fromJson(decoded);
         } catch (e) {
+          print("JSON Parse Error: $e");
           throw Exception('Failed to parse response: $e');
         }
       } else {
@@ -39,7 +45,7 @@ class CustomerListService {
         );
       }
     } catch (e) {
-      print("customer list error: $e");
+      print("Customer List Error: $e");
       throw Exception('Network error: $e');
     }
   }

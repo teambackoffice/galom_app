@@ -401,8 +401,8 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                           _buildCustomerCard(customers: customers),
                           SizedBox(height: 16),
                           _buildItemsCard(taxList),
-                          SizedBox(height: 16),
-                          _buildSpecialOrderSwitch(), // Add this line
+                          // SizedBox(height: 16),
+                          // _buildSpecialOrderSwitch(), // Add this line
                           SizedBox(height: 16),
                           _buildTotalCard(),
                           SizedBox(height: 16),

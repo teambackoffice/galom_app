@@ -126,7 +126,7 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
                     child: const Icon(
                       Icons.assignment_return,
                       color: Colors.white,
-                      size: 24,
+                      size: 18,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -137,7 +137,7 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
                         Text(
                           'Sales Returns',
                           style: TextStyle(
-                            fontSize: 28,
+                            fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: Color(0xFF2D3436),
                           ),
@@ -213,7 +213,9 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
             _animationController.forward();
           }
 
-          if (controller.error != null && controller.error!.isNotEmpty) {
+          final salesReturns = controller.salesreturnList?.message.data ?? [];
+
+          if (salesReturns.isEmpty) {
             return RefreshIndicator(
               onRefresh: _onRefresh,
               color: const Color(0xFF764BA2),
@@ -240,13 +242,13 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          'Pull to refresh or start by creating your first return',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[500],
-                          ),
-                        ),
+                        // Text(
+                        //   'Pull to refresh or start by creating your first return',
+                        //   style: TextStyle(
+                        //     fontSize: 14,
+                        //     color: Colors.grey[500],
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -254,8 +256,6 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
               ),
             );
           }
-
-          final salesReturns = controller.salesreturnList!.message.data ?? [];
           final filteredSalesReturns = _filterSalesReturns(salesReturns);
 
           return RefreshIndicator(

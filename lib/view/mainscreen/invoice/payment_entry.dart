@@ -217,15 +217,6 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
     if (paymentEntryData == null) return false;
     if (isLoadingPaymentData) return false;
 
-    // final paymentAmount = double.tryParse(paymentController.text) ?? 0.0;
-    // if (paymentAmount <= 0) return false;
-
-    // Check reference fields for non-cash payments
-    // if (selectedPaymentMethod.toLowerCase() != 'cash') {
-    //   if (referenceNumberController.text.trim().isEmpty) return false;
-    //   if (selectedReferenceDate == null) return false;
-    // }
-
     return true;
   }
 
