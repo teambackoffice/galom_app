@@ -8,18 +8,48 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   final LoginService _authService = LoginService();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeIn,
+      ),
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.easeOutBack,
+      ),
+    );
+
+    _animationController.forward();
     _navigateToHome();
   }
 
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   _navigateToHome() async {
-    // Show splash for 2-3 seconds
-    await Future.delayed(Duration(seconds: 3));
+    // Show splash for 3 seconds
+    await Future.delayed(const Duration(seconds: 3));
 
     // Check login status
     final isLoggedIn = await _authService.isLoggedIn();
@@ -37,31 +67,49 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Pure white background
+      backgroundColor: const Color(0xFF0D1B3E),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App logo/image
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.3),
-                    spreadRadius: 2,
-                    blurRadius: 10,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+        child: AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _fadeAnimation.value,
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // App logo/image with premium styling
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          'assets/icon.png', 
+                          height: 160,
+                          fit: BoxFit.contain, // Allows natural width ratio
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 60),
+                    // Elegant loading indicator
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset('assets/icon.png', width: 200, height: 120),
-              ),
-            ),
-            SizedBox(height: 30),
-          ],
+            );
+          },
         ),
       ),
     );

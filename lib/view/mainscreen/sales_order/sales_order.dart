@@ -130,7 +130,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
             padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF764BA2), Color(0xFF667EEA)],
+                colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
@@ -393,13 +393,13 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
               Container(
                 padding: EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Color(0xFF764BA2).withOpacity(0.1),
+                  color: Color(0xFF0D1B3E).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.receipt_long_outlined,
                   size: 64,
-                  color: Color(0xFF764BA2).withOpacity(0.5),
+                  color: Color(0xFF0D1B3E).withOpacity(0.5),
                 ),
               ),
               SizedBox(height: 24),
@@ -424,7 +424,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                 icon: Icon(Icons.refresh),
                 label: Text('Refresh'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF764BA2),
+                  backgroundColor: Color(0xFF0D1B3E),
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -649,7 +649,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        Color(0xFF764BA2).withOpacity(0.3),
+                        Color(0xFF0D1B3E).withOpacity(0.3),
                         Colors.transparent,
                       ],
                     ),
@@ -698,7 +698,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                     height: 64,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                        colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

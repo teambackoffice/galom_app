@@ -9,6 +9,7 @@ import 'package:location_tracker_app/controller/invoice_list_controller.dart';
 import 'package:location_tracker_app/controller/item_list_controller.dart';
 import 'package:location_tracker_app/controller/item_stock_controller.dart';
 import 'package:location_tracker_app/controller/item_tax_controller.dart';
+import 'package:location_tracker_app/controller/leave_application_controller.dart';
 import 'package:location_tracker_app/controller/login_controller.dart';
 import 'package:location_tracker_app/controller/mode_of_pay_controller.dart';
 import 'package:location_tracker_app/controller/pay_sales_invoice_controller.dart';
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UpdateTaskStatusController()),
         ChangeNotifierProvider(create: (_) => RemarkTaskController()),
         ChangeNotifierProvider(create: (_) => ItemStockController()),
+        ChangeNotifierProvider(create: (_) => GetLeaveApplicationController()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
