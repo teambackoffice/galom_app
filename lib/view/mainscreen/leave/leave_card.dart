@@ -2,7 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/leave_application.dart';
-import 'package:location_tracker_app/view/mainscreen/leave/leave_detail_page.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/leave_detail_page.dart'
+    hide LeaveDetailPage;
 
 class LeaveCard extends StatelessWidget {
   final LeaveRequest leave;

@@ -47,8 +47,8 @@ class LoginService {
         final branch = message['branch'];
         final roles = message['roles'];
         final email = message['email'];
-        final empId = message['emp_id'];
-        final empName = message['emp_name'];
+        final empId = message['employee_id'];
+        final empName = message['employee_name'];
         final salesPersonId = message['sales_person_id'];
 
         debugPrint('========== EXTRACTED VALUES ==========');

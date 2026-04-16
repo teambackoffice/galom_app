@@ -28,19 +28,13 @@ class GetLeaveApplicationService {
         },
       );
 
-      print('Leave API URL: $url');
-      print('Status Code: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         return LeaveApplicationModalClass.fromJson(jsonData);
       } else {
-        print('Error: ${response.reasonPhrase}');
         return null;
       }
     } catch (e) {
-      print('Leave Application Service Error: $e');
       return null;
     }
   }

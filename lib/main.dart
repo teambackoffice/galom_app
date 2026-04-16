@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:location_tracker_app/controller/create_leave_controller.dart';
 import 'package:location_tracker_app/controller/create_payment_entry_controller.dart';
 import 'package:location_tracker_app/controller/create_sales_order_controller.dart';
 import 'package:location_tracker_app/controller/create_sales_return_contoller.dart';
@@ -73,6 +74,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => RemarkTaskController()),
         ChangeNotifierProvider(create: (_) => ItemStockController()),
         ChangeNotifierProvider(create: (_) => GetLeaveApplicationController()),
+        ChangeNotifierProvider(
+          create: (_) => CreateLeaveApplicationController(),
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

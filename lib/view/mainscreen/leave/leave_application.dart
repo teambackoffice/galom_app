@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:location_tracker_app/controller/create_leave_controller.dart';
 import 'package:location_tracker_app/controller/leave_application_controller.dart';
-import 'package:location_tracker_app/view/mainscreen/leave/leave_detail_page.dart';
 import 'package:provider/provider.dart';
 import 'package:location_tracker_app/modal/leave_applicatrion_modal.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 // --- Entry Point Widget ---
 class LeaveApplication extends StatelessWidget {
@@ -10,8 +11,13 @@ class LeaveApplication extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => GetLeaveApplicationController(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => GetLeaveApplicationController()),
+        ChangeNotifierProvider(
+          create: (_) => CreateLeaveApplicationController(),
+        ),
+      ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(),
@@ -82,6 +88,11 @@ String _formatPostedDate(DateTime date) {
     'Dec',
   ];
   return '${date.day} ${months[date.month - 1]}, ${date.year}';
+}
+
+// Format DateTime to API-expected string: "YYYY-MM-DD"
+String _formatApiDate(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
 
 // --- Data Model ---
@@ -212,15 +223,9 @@ class _LeaveListPageState extends State<LeaveListPage> {
               .map((a) => LeaveRequest.fromApplication(a))
               .toList();
 
-          final balance = data.monthlyLeaveBalance;
-
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // _buildBalanceStrip(
-              //   taken: balance.takenThisMonth,
-              //   remaining: balance.totalRemainingBalance,
-              // ),
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 20, 16, 8),
                 child: Text(
@@ -327,60 +332,6 @@ class _LeaveListPageState extends State<LeaveListPage> {
     );
   }
 
-  Widget _buildBalanceStrip({
-    required double taken,
-    required double remaining,
-  }) {
-    final total = taken + remaining;
-    String fmt(double n) => n % 1 == 0 ? n.toInt().toString() : n.toString();
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0), width: 0.5),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          children: [
-            _balanceItem(fmt(total), 'Total', const Color(0xFF1A1A1A)),
-            _verticalDivider(),
-            _balanceItem(fmt(remaining), 'Available', const Color(0xFF3B6D11)),
-            _verticalDivider(),
-            _balanceItem(fmt(taken), 'Used', const Color(0xFFA32D2D)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _balanceItem(String value, String label, Color valueColor) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: valueColor,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF888780)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _verticalDivider() =>
-      Container(width: 0.5, color: const Color(0xFFE0E0E0));
-
   Widget _buildFAB(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -409,16 +360,13 @@ class _LeaveListPageState extends State<LeaveListPage> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const LeaveApplySheet(),
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => CreateLeaveApplicationController(),
+        child: const LeaveApplySheet(),
+      ),
     );
   }
 }
-
-// --- All other widgets remain exactly the same ---
-// LeaveCard, _StatusChip, LeaveApplySheet, _HalfDayToggleRow,
-// _ToggleSwitch, _SessionSelector, _SessionOption,
-// _DropdownField, _DateTile, LeaveDetailPage
-// (paste them here unchanged from your original file)
 
 // --- Leave Card ---
 class LeaveCard extends StatelessWidget {
@@ -627,11 +575,117 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
   void _onHalfDayToggled(bool value) {
     setState(() {
       isHalfDay = value;
-      if (isHalfDay) {
-        // Half day: lock to single date — set toDate = fromDate
-        if (fromDate != null) toDate = fromDate;
+      if (isHalfDay && fromDate != null) {
+        toDate = fromDate;
       }
     });
+  }
+
+  // Validate required fields before submit
+  String? _validate() {
+    if (fromDate == null) return 'Please select a start date';
+    if (!isHalfDay && toDate == null) return 'Please select an end date';
+    return null;
+  }
+
+  Future<void> _submit() async {
+    final validationError = _validate();
+    if (validationError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(validationError),
+          backgroundColor: const Color(0xFFE24B4A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Read employee from secure storage — key is 'employee_id'
+    const storage = FlutterSecureStorage();
+    final employee = await storage.read(key: 'employee_id') ?? '';
+
+    if (!mounted) return;
+
+    if (employee.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Employee ID not found. Please login again.'),
+          backgroundColor: Color(0xFFE24B4A),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final controller = context.read<CreateLeaveApplicationController>();
+
+    // half_day: 1 if half day, 0 if full day
+    final int halfDayValue = isHalfDay ? 1 : 0;
+
+    // half_day_date: only sent when half_day = 1
+    final String? halfDayDateValue = isHalfDay && fromDate != null
+        ? _formatApiDate(fromDate!)
+        : null;
+
+    // from_date / to_date: for half day, both are the same date
+    final String fromDateStr = _formatApiDate(fromDate!);
+    final String toDateStr = isHalfDay ? fromDateStr : _formatApiDate(toDate!);
+
+    await controller.submitLeaveApplication(
+      employee: employee,
+      leaveType: selectedType,
+      fromDate: fromDateStr,
+      toDate: toDateStr,
+      description: reasonController.text.trim(),
+      halfDay: halfDayValue,
+      halfDayDate: halfDayDateValue,
+    );
+
+    if (!mounted) return;
+
+    if (controller.isSuccess) {
+      // Capture the parent page's ScaffoldMessenger BEFORE popping,
+      // so the snackbar shows on the list page (not the disposed sheet).
+      final listPageMessenger = ScaffoldMessenger.of(context);
+      final listPageController = context.read<GetLeaveApplicationController>();
+
+      Navigator.pop(context); // close the bottom sheet
+
+      // Refresh the leave list after sheet is gone
+      listPageController.fetchLeaveApplications();
+
+      listPageMessenger.showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 10),
+              Text('Leave application submitted successfully'),
+            ],
+          ),
+          backgroundColor: const Color(0xFF3B6D11),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } else if (controller.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(controller.errorMessage!),
+          backgroundColor: const Color(0xFFE24B4A),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -711,7 +765,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                     _fieldLabel(isHalfDay ? 'Date' : 'Date range'),
                     const SizedBox(height: 6),
                     if (isHalfDay)
-                      // Single date picker for half day
                       _DateTile(
                         label: 'Date',
                         value: _formatDate(fromDate),
@@ -788,28 +841,43 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Submit
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1A1A1A),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+
+                    // Submit button — watches loading state
+                    Consumer<CreateLeaveApplicationController>(
+                      builder: (context, createCtrl, _) {
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: createCtrl.isLoading ? null : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1A1A1A),
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: const Color(0xFF888780),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: createCtrl.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Submit application',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                           ),
-                        ),
-                        child: const Text(
-                          'Submit application',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -904,7 +972,6 @@ class _HalfDayToggleRow extends StatelessWidget {
                 ],
               ),
             ),
-            // Custom toggle switch
             _ToggleSwitch(value: isHalfDay),
           ],
         ),
@@ -1087,7 +1154,7 @@ class _SessionOption extends StatelessWidget {
   }
 }
 
-// --- Dropdown Field (unchanged) ---
+// --- Dropdown Field ---
 class _DropdownField extends StatelessWidget {
   final String value;
   final List<String> items;
@@ -1127,7 +1194,7 @@ class _DropdownField extends StatelessWidget {
   }
 }
 
-// --- Date Tile (unchanged) ---
+// --- Date Tile ---
 class _DateTile extends StatelessWidget {
   final String label;
   final String value;
@@ -1177,7 +1244,275 @@ class _DateTile extends StatelessWidget {
 }
 
 // --- Leave Detail Page ---
+class LeaveDetailPage extends StatelessWidget {
+  final LeaveRequest leave;
 
-// Note: Ensure your imports for controllers and models match your project structure
-// import 'package:location_tracker_app/controller/leave_application_controller.dart';
-// import 'package:location_tracker_app/modal/leave_applicatrion_modal.dart';
+  const LeaveDetailPage({super.key, required this.leave});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: AppBar(
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: Color(0xFF1A1A1A)),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Application Details',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            _buildHeaderStatus(),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  _buildInfoCard(),
+                  const SizedBox(height: 20),
+                  if (leave.reason != null && leave.reason!.isNotEmpty)
+                    _buildSectionCard('Reason for Leave', leave.reason!),
+                  const SizedBox(height: 20),
+                  _buildTimeline(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderStatus() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.only(bottom: 30),
+      child: Column(
+        children: [
+          const SizedBox(height: 10),
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: leave.status.chipBg,
+            child: Icon(
+              _getStatusIcon(leave.status),
+              color: leave.status.chipText,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            leave.status.label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: leave.status.chipText,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            leave.type,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _infoRow(Icons.calendar_month_rounded, 'Duration', leave.dateRange),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 15),
+            child: Divider(height: 1, thickness: 0.5),
+          ),
+          _infoRow(Icons.timer_outlined, 'Total Days', '${leave.days} Days'),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 15),
+            child: Divider(height: 1, thickness: 0.5),
+          ),
+          _infoRow(
+            Icons.history_rounded,
+            'Submitted',
+            leave.appliedOn ?? 'N/A',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: const Color(0xFF888780)),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF888780)),
+            ),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard(String title, String content) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF888780),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            content,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF4A4A4A),
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeline() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'APPROVAL FLOW',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF888780),
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 20),
+          _timelineItem('Application Submitted', leave.appliedOn ?? '', true),
+          _timelineItem(
+            leave.status == LeaveStatus.pending
+                ? 'Waiting for Manager'
+                : 'Manager Processed',
+            leave.status == LeaveStatus.pending ? 'In Progress' : 'Completed',
+            leave.status != LeaveStatus.pending,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timelineItem(String title, String subtitle, bool isDone) {
+    return Row(
+      children: [
+        Column(
+          children: [
+            Icon(
+              isDone
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: isDone ? const Color(0xFF3B6D11) : const Color(0xFFD3D1C7),
+              size: 20,
+            ),
+            Container(width: 2, height: 30, color: const Color(0xFFF0F0F0)),
+          ],
+        ),
+        const SizedBox(width: 15),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isDone ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF888780)),
+            ),
+            const SizedBox(height: 15),
+          ],
+        ),
+      ],
+    );
+  }
+
+  IconData _getStatusIcon(LeaveStatus status) {
+    switch (status) {
+      case LeaveStatus.approved:
+        return Icons.verified_rounded;
+      case LeaveStatus.rejected:
+        return Icons.cancel_rounded;
+      case LeaveStatus.pending:
+        return Icons.hourglass_empty_rounded;
+    }
+  }
+}
