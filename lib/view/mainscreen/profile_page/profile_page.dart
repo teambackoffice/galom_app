@@ -208,7 +208,7 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF764BA2),
+              backgroundColor: const Color(0xFF1A3A6E),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -235,7 +235,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ScaffoldMessenger.of(pageContext).showSnackBar(
                 SnackBar(
                   content: const Text('Log out successful!'),
-                  backgroundColor: const Color(0xFF764BA2),
+                  backgroundColor: const Color(0xFF1A3A6E),
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
