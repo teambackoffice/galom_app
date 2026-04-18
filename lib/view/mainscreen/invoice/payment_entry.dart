@@ -448,12 +448,12 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? Colors.purple.withOpacity(0.1)
+                                  ? Color(0xFF1A3A6E).withOpacity(0.1)
                                   : Colors.grey[50],
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isSelected
-                                    ? Colors.purple
+                                    ? Color(0xFF1A3A6E)
                                     : Colors.grey[300]!,
                                 width: isSelected ? 2 : 1,
                               ),
@@ -464,7 +464,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                                 Icon(
                                   _getPaymentIcon(method),
                                   color: isSelected
-                                      ? Colors.purple
+                                      ? Color(0xFF1A3A6E)
                                       : Colors.grey[600],
                                   size: 24,
                                 ),
@@ -473,7 +473,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                                   method,
                                   style: TextStyle(
                                     color: isSelected
-                                        ? Colors.purple
+                                        ? Color(0xFF1A3A6E)
                                         : Colors.grey[600],
                                     fontWeight: isSelected
                                         ? FontWeight.w600
@@ -605,7 +605,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                   Text(
                     _formatCurrency(invoice.outstandingAmount.toDouble()),
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.red[700],
                     ),
@@ -1187,7 +1187,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
             Text('Payment Entry'),
           ],
         ),
-        backgroundColor: Color(0xFF764BA2),
+        backgroundColor: Color(0xFF1A3A6E),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(

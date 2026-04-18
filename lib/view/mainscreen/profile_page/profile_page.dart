@@ -68,7 +68,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                            colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -148,41 +148,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
                       const SizedBox(height: 20),
 
-                      // Actions Menu
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            _buildActionItem(
-                              Icons.calendar_month,
-                              'Leave Application',
-                              'Apply for leave',
-                              () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const LeaveApplicationPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 30),
-
                       // Logout Button
                       SizedBox(
                         width: double.infinity,
@@ -192,7 +157,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               ? null
                               : () => _showLogoutDialog(context),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF764BA2),
+                            backgroundColor: const Color(0xFF1A3A6E),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
@@ -294,7 +259,7 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF764BA2), Color(0xFF667EEA)],
+                colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
               ),
               borderRadius: BorderRadius.circular(12),
               boxShadow: [

@@ -166,7 +166,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   AnimatedDefaultTextStyle(
                     duration: Duration(milliseconds: 300),
                     style: TextStyle(
-                      color: Color(0xFF764BA2),
+                      color: Color(0xFF1A3A6E),
                       fontSize: 34,
                       fontWeight: FontWeight.w800,
                       letterSpacing: 1.2,
@@ -236,7 +236,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                                 ? null
                                 : _handleLogin,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF764BA2),
+                              backgroundColor: Color(0xFF1A3A6E),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                               ),
@@ -283,12 +283,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       obscureText: isPassword ? _obscurePassword : false,
       validator: validator,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: Color(0xFF764BA2)),
+        prefixIcon: Icon(icon, color: Color(0xFF1A3A6E)),
         suffixIcon: isPassword
             ? IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  color: Color(0xFF764BA2),
+                  color: Color(0xFF1A3A6E),
                 ),
                 onPressed: () {
                   setState(() {
@@ -307,7 +307,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Color(0xFF764BA2), width: 2),
+          borderSide: BorderSide(color: Color(0xFF1A3A6E), width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),

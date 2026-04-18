@@ -85,11 +85,6 @@ class _InvoicePageState extends State<InvoicePage> {
     }
   }
 
-  // Manual refresh button handler
-  void _manualRefresh() {
-    _refreshIndicatorKey.currentState?.show();
-  }
-
   void _makePayment(Invoice invoice) {
     Navigator.push(
       context,
@@ -630,7 +625,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF764BA2), Color(0xFF667EEA)],
+                    colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [

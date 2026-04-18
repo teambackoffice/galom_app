@@ -463,15 +463,15 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Color(0xFF764BA2).withOpacity(0.1),
-                            Color(0xFF667EEA).withOpacity(0.1),
+                            Color(0xFF0D1B3E).withOpacity(0.1),
+                            Color(0xFF1A3A6E).withOpacity(0.1),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
                         Icons.description_outlined,
-                        color: Color(0xFF764BA2),
+                        color: Color(0xFF1A3A6E),
                         size: 24,
                       ),
                     ),
@@ -817,13 +817,16 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                         padding: EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Colors.blue[50]!, Colors.blue[100]!],
+                            colors: [
+                              Color(0xFF0D1B3E).withOpacity(0.1),
+                              Color(0xFF1A3A6E).withOpacity(0.1),
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: Colors.blue[200]!,
+                            color: Color(0xFF1A3A6E).withOpacity(0.1),
                             width: 1,
                           ),
                         ),
@@ -838,7 +841,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.blue[800],
+                                    color: Color(0xFF1A3A6E),
                                   ),
                                 ),
                                 Spacer(),

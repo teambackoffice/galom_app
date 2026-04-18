@@ -14,22 +14,22 @@ class InvoiceDetails extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            const SizedBox(width: 50),
+            const SizedBox(width: 40),
 
-            Icon(Icons.payment, color: Colors.white, size: 30),
-            const SizedBox(width: 10),
+            Icon(Icons.payment, color: Colors.white, size: 25),
+            const SizedBox(width: 8),
             const Text(
               'Invoice Details',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
-                fontSize: 24,
+                fontSize: 20,
               ),
             ),
           ],
         ),
         centerTitle: true,
-        backgroundColor: const Color(0xFF667EEA),
+        backgroundColor: const Color(0xFF1A3A6E),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
@@ -533,14 +533,14 @@ class InvoiceDetails extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+          colors: [Color(0xFF1A3A6E), Color(0xFF1A3A6E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF667EEA).withOpacity(0.3),
+            color: const Color(0xFF1A3A6E).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),

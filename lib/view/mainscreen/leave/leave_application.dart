@@ -90,7 +90,6 @@ String _formatPostedDate(DateTime date) {
   return '${date.day} ${months[date.month - 1]}, ${date.year}';
 }
 
-// Format DateTime to API-expected string: "YYYY-MM-DD"
 String _formatApiDate(DateTime date) {
   return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }
@@ -173,6 +172,8 @@ extension LeaveStatusExt on LeaveStatus {
 }
 
 // --- Main List Page ---
+// ─── Replace the entire LeaveListPage class ────────────────────────────────
+
 class LeaveListPage extends StatefulWidget {
   const LeaveListPage({super.key});
 
@@ -181,6 +182,26 @@ class LeaveListPage extends StatefulWidget {
 }
 
 class _LeaveListPageState extends State<LeaveListPage> {
+  String _filter = 'All';
+  final _filters = ['All', 'Approved', 'Pending', 'Rejected'];
+
+  static const _months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  String _monthKey(DateTime d) => '${_months[d.month - 1]} ${d.year}';
+
   @override
   void initState() {
     super.initState();
@@ -192,106 +213,165 @@ class _LeaveListPageState extends State<LeaveListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: _buildAppBar(),
-      body: Consumer<GetLeaveApplicationController>(
-        builder: (context, controller, _) {
-          if (controller.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF1A1A1A),
-                strokeWidth: 2,
-              ),
-            );
-          }
-
-          if (controller.errorMessage != null) {
-            return _buildError(controller);
-          }
-
-          final data = controller.leaveData?.message;
-          if (data == null) {
-            return const Center(
-              child: Text(
-                'No data available',
-                style: TextStyle(color: Color(0xFF888780)),
-              ),
-            );
-          }
-
-          final leaves = data.applications
-              .map((a) => LeaveRequest.fromApplication(a))
-              .toList();
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: const Color(0xFFF5F5F0),
+      body: SafeArea(
+        child: Consumer<GetLeaveApplicationController>(
+          builder: (context, controller, _) => Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 8),
-                child: Text(
-                  'RECENT APPLICATIONS',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF888780),
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: leaves.isEmpty
-                    ? _buildEmpty()
-                    : RefreshIndicator(
-                        color: const Color(0xFF1A1A1A),
-                        onRefresh: () => controller.fetchLeaveApplications(),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                          itemCount: leaves.length,
-                          itemBuilder: (context, index) =>
-                              LeaveCard(leave: leaves[index]),
-                        ),
-                      ),
-              ),
+              _buildHeader(),
+              Expanded(child: _buildBody(controller)),
             ],
-          );
-        },
+          ),
+        ),
       ),
       floatingActionButton: _buildFAB(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
-  Widget _buildError(GetLeaveApplicationController controller) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: Color(0xFFD3D1C7),
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          // Icon container with gradient — same colours as Sales Orders
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF764BA2).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              controller.errorMessage!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF888780)),
+            child: const Icon(Icons.event_note, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 16),
+          // Title
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'My Leaves',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2D3436),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: controller.fetchLeaveApplications,
-              child: const Text(
-                'Try again',
-                style: TextStyle(
-                  color: Color(0xFF1A1A1A),
-                  fontWeight: FontWeight.w600,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(GetLeaveApplicationController controller) {
+    if (controller.isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF1A1A1A),
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    if (controller.errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 48,
+                color: Color(0xFFD3D1C7),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                controller.errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Color(0xFF888780)),
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: controller.fetchLeaveApplications,
+                child: const Text(
+                  'Try again',
+                  style: TextStyle(
+                    color: Color(0xFF1A1A1A),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      );
+    }
+
+    final apps = controller.leaveData?.message?.applications;
+    if (apps == null || apps.isEmpty) return _buildEmpty();
+
+    // Filter using Application.status directly (before conversion)
+    final filtered = _filter == 'All'
+        ? apps
+        : apps
+              .where((a) => a.status.toLowerCase() == _filter.toLowerCase())
+              .toList();
+
+    if (filtered.isEmpty) return _buildEmpty();
+
+    // Group by month using Application.fromDate
+    final groups = <String, List<Application>>{};
+    for (final a in filtered) {
+      final key = _monthKey(a.fromDate);
+      (groups[key] ??= []).add(a);
+    }
+
+    // Flatten: String month label + Application items
+    final items = <Object>[];
+    groups.forEach((month, list) {
+      items.add(month);
+      items.addAll(list);
+    });
+
+    return RefreshIndicator(
+      color: const Color(0xFF1A1A1A),
+      onRefresh: () => controller.fetchLeaveApplications(),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+        itemCount: items.length,
+        itemBuilder: (context, i) {
+          final item = items[i];
+          if (item is String) {
+            // Month header
+            return Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 8, left: 2),
+              child: Text(
+                item,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF888780),
+                  letterSpacing: 0.5,
+                ),
+              ),
+            );
+          }
+          return LeaveCard(
+            leave: LeaveRequest.fromApplication(item as Application),
+          );
+        },
       ),
     );
   }
@@ -312,34 +392,22 @@ class _LeaveListPageState extends State<LeaveListPage> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      elevation: 0,
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(0.5),
-        child: Container(height: 0.5, color: const Color(0xFFE0E0E0)),
-      ),
-      title: const Text(
-        'My Leaves',
-        style: TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1A1A1A),
-        ),
-      ),
-    );
-  }
-
   Widget _buildFAB(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
         width: double.infinity,
         child: FloatingActionButton.extended(
-          onPressed: () => _showApplySheet(context),
-          backgroundColor: const Color(0xFF1A1A1A),
+          onPressed: () => showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => ChangeNotifierProvider(
+              create: (_) => CreateLeaveApplicationController(),
+              child: const LeaveApplySheet(),
+            ),
+          ),
+          backgroundColor: const Color(0xFF1A3A6E),
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -354,104 +422,138 @@ class _LeaveListPageState extends State<LeaveListPage> {
       ),
     );
   }
-
-  void _showApplySheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) => CreateLeaveApplicationController(),
-        child: const LeaveApplySheet(),
-      ),
-    );
-  }
 }
 
-// --- Leave Card ---
+// ─── Replace the entire LeaveCard class ───────────────────────────────────
+
 class LeaveCard extends StatelessWidget {
   final LeaveRequest leave;
-
   const LeaveCard({super.key, required this.leave});
 
   String get _daysLabel {
     final d = leave.days;
-    return '${d % 1 == 0 ? d.toInt() : d} ${d == 1 ? 'day' : 'days'}';
+    final n = d % 1 == 0 ? d.toInt().toString() : '0.5';
+    return '$n ${d == 1 ? 'day' : 'days'}';
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => LeaveDetailPage(leave: leave),
-          ),
-        );
-      },
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => LeaveDetailPage(leave: leave)),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0E0), width: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFEEEEEE), width: 0.5),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           child: IntrinsicHeight(
             child: Row(
               children: [
+                // Colored accent bar
                 Container(width: 4, color: leave.status.barColor),
+
+                // Main content
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                    padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Row 1: leave type + status chip
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              leave.type,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
+                            Expanded(
+                              child: Text(
+                                leave.type,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1A1A1A),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             _StatusChip(status: leave.status),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
+                        // Row 2: calendar icon + date range + days pill
                         Row(
                           children: [
                             Icon(
                               Icons.calendar_today_outlined,
-                              size: 14,
-                              color: Colors.grey[500],
+                              size: 13,
+                              color: Colors.grey[400],
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              leave.dateRange,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[600],
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                leave.dateRange,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
                               ),
                             ),
-                            const Spacer(),
-                            Text(
-                              _daysLabel,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: Color(0xFF888780),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F5F0),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _daysLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF888780),
+                                ),
                               ),
                             ),
                           ],
                         ),
+                        // Row 3: applied on date (if present)
+                        if (leave.appliedOn != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.schedule_rounded,
+                                size: 12,
+                                color: Colors.grey[350],
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Applied ${leave.appliedOn}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey[400],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
+                  ),
+                ),
+
+                // Chevron
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: Colors.grey[300],
                   ),
                 ),
               ],
@@ -497,20 +599,13 @@ class LeaveApplySheet extends StatefulWidget {
 }
 
 class _LeaveApplySheetState extends State<LeaveApplySheet> {
-  final List<String> leaveTypes = const [
-    'Annual Leave',
-    'Sick Leave',
-    'Casual Leave',
-    'Maternity Leave',
-    'Paternity Leave',
-    'Compensatory Leave',
-  ];
+  final List<String> leaveTypes = const ['Sick Leave', 'Casual Leave'];
 
-  String selectedType = 'Annual Leave';
+  String selectedType = 'Sick Leave';
   DateTime? fromDate;
   DateTime? toDate;
   bool isHalfDay = false;
-  String halfDaySession = 'Morning'; // 'Morning' or 'Afternoon'
+  String halfDaySession = 'Morning';
   final TextEditingController reasonController = TextEditingController();
 
   @override
@@ -540,7 +635,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
         if (isFrom) {
           fromDate = picked;
           if (toDate != null && toDate!.isBefore(picked)) toDate = null;
-          // When half day is on, lock toDate = fromDate
           if (isHalfDay) toDate = picked;
         } else {
           toDate = picked;
@@ -581,7 +675,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
     });
   }
 
-  // Validate required fields before submit
   String? _validate() {
     if (fromDate == null) return 'Please select a start date';
     if (!isHalfDay && toDate == null) return 'Please select an end date';
@@ -604,7 +697,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
       return;
     }
 
-    // Read employee from secure storage — key is 'employee_id'
     const storage = FlutterSecureStorage();
     final employee = await storage.read(key: 'employee_id') ?? '';
 
@@ -623,15 +715,10 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
 
     final controller = context.read<CreateLeaveApplicationController>();
 
-    // half_day: 1 if half day, 0 if full day
     final int halfDayValue = isHalfDay ? 1 : 0;
-
-    // half_day_date: only sent when half_day = 1
     final String? halfDayDateValue = isHalfDay && fromDate != null
         ? _formatApiDate(fromDate!)
         : null;
-
-    // from_date / to_date: for half day, both are the same date
     final String fromDateStr = _formatApiDate(fromDate!);
     final String toDateStr = isHalfDay ? fromDateStr : _formatApiDate(toDate!);
 
@@ -648,14 +735,10 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
     if (!mounted) return;
 
     if (controller.isSuccess) {
-      // Capture the parent page's ScaffoldMessenger BEFORE popping,
-      // so the snackbar shows on the list page (not the disposed sheet).
       final listPageMessenger = ScaffoldMessenger.of(context);
       final listPageController = context.read<GetLeaveApplicationController>();
 
-      Navigator.pop(context); // close the bottom sheet
-
-      // Refresh the leave list after sheet is gone
+      Navigator.pop(context);
       listPageController.fetchLeaveApplications();
 
       listPageMessenger.showSnackBar(
@@ -704,7 +787,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle
               Center(
                 child: Container(
                   margin: const EdgeInsets.only(top: 12, bottom: 20),
@@ -716,7 +798,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                   ),
                 ),
               ),
-              // Title
               const Padding(
                 padding: EdgeInsets.fromLTRB(20, 0, 20, 16),
                 child: Text(
@@ -734,7 +815,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Leave type
                     _fieldLabel('Leave type'),
                     const SizedBox(height: 6),
                     _DropdownField(
@@ -743,14 +823,10 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                       onChanged: (v) => setState(() => selectedType = v!),
                     ),
                     const SizedBox(height: 16),
-
-                    // Half Day Toggle Row
                     _HalfDayToggleRow(
                       isHalfDay: isHalfDay,
                       onToggled: _onHalfDayToggled,
                     ),
-
-                    // Session selector (only when half day is on)
                     if (isHalfDay) ...[
                       const SizedBox(height: 12),
                       _SessionSelector(
@@ -758,10 +834,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                         onSelected: (s) => setState(() => halfDaySession = s),
                       ),
                     ],
-
                     const SizedBox(height: 16),
-
-                    // Date range
                     _fieldLabel(isHalfDay ? 'Date' : 'Date range'),
                     const SizedBox(height: 6),
                     if (isHalfDay)
@@ -793,9 +866,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                           ),
                         ],
                       ),
-
                     const SizedBox(height: 16),
-                    // Reason
                     Row(
                       children: [
                         _fieldLabel('Reason'),
@@ -841,8 +912,6 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
-                    // Submit button — watches loading state
                     Consumer<CreateLeaveApplicationController>(
                       builder: (context, createCtrl, _) {
                         return SizedBox(
@@ -850,7 +919,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                           child: ElevatedButton(
                             onPressed: createCtrl.isLoading ? null : _submit,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1A1A1A),
+                              backgroundColor: const Color(0xFF1A3A6E),
                               foregroundColor: Colors.white,
                               disabledBackgroundColor: const Color(0xFF888780),
                               elevation: 0,
@@ -869,7 +938,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                                     ),
                                   )
                                 : const Text(
-                                    'Submit application',
+                                    'Submit Application',
                                     style: TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w500,

@@ -112,7 +112,7 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF764BA2), Color(0xFF667EEA)],
+                        colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
                       ),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
@@ -965,7 +965,7 @@ class _SalesReturnListPageState extends State<SalesReturnListPage>
             ),
           );
         },
-        backgroundColor: const Color(0xFF764BA2),
+        backgroundColor: const Color(0xFF1A3A6E),
         foregroundColor: Colors.white,
         elevation: 8,
         icon: const Icon(Icons.add),
