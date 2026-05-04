@@ -234,7 +234,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
               ScaffoldMessenger.of(pageContext).showSnackBar(
                 SnackBar(
-                  content: const Text('Log out successful!'),
+                  content: const Text('Log Out Successful !'),
                   backgroundColor: const Color(0xFF1A3A6E),
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(

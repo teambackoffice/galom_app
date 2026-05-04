@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:location_tracker_app/controller/attendance_check_controller.dart';
 import 'package:location_tracker_app/controller/create_leave_controller.dart';
 import 'package:location_tracker_app/controller/create_payment_entry_controller.dart';
 import 'package:location_tracker_app/controller/create_sales_order_controller.dart';
@@ -77,6 +78,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => CreateLeaveApplicationController(),
         ),
+        ChangeNotifierProvider(create: (_) => UpdatedAttendanceController()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

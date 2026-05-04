@@ -17,7 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   final List<Widget> _pages = [
-    // LocationTrackingPage(),
+    LocationTrackingPage(),
     SalesOrdersListPage(),
     InvoicePage(),
     LeaveApplication(),
@@ -60,10 +60,10 @@ class _MainScreenState extends State<MainScreen> {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
           items: const [
-            // BottomNavigationBarItem(
-            //   icon: Icon(Icons.check_circle),
-            //   label: 'Attendance',
-            // ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.check_circle),
+              label: 'Attendance',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.business_center_rounded),
               label: 'Sales',

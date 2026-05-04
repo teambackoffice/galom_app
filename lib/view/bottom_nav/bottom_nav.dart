@@ -35,7 +35,7 @@ class ModernBottomNavBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // _buildNavItem(0, Icons.check_circle, 'Attendance'),
+            _buildNavItem(0, Icons.check_circle, 'Attendance'),
             _buildNavItem(0, Icons.business_center_rounded, 'Sales'),
             // _buildNavItem(1, Icons.add_task, 'Tasks'),
             _buildNavItem(1, Icons.receipt, 'Invoice'),

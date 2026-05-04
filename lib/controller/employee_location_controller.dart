@@ -13,10 +13,17 @@ class LocationController extends ChangeNotifier {
 
   bool isLoading = false;
   bool isTracking = false;
+  bool _isInitializing = false;
   String? error;
   String? lastResult;
   int trackingInterval = 60; // Default fallback value (1 minute)
   bool _intervalLoaded = false;
+
+  bool get isInitializing => _isInitializing;
+
+  // Check-in / check-out timestamps shown in the UI
+  DateTime? checkInTime;
+  DateTime? checkOutTime;
 
   // Batch sending configuration
   bool enableBatchSending = false;
@@ -36,10 +43,19 @@ class LocationController extends ChangeNotifier {
     print("🚀 LocationController initialized");
   }
 
+  // Public method to trigger initialization (useful for manual re-init from UI)
+  Future<void> init(String kEmployeeId) async {
+    await _initialize();
+  }
+
   // Initialize controller with API interval fetch and state loading
   Future<void> _initialize() async {
+    _isInitializing = true;
+    notifyListeners();
     await _loadTrackingIntervalFromAPI();
     await _loadTrackingState();
+    _isInitializing = false;
+    notifyListeners();
   }
 
   // Fetch tracking interval from API
@@ -446,6 +462,10 @@ class LocationController extends ChangeNotifier {
         print("✅ Check In entry sent successfully");
         lastResult = '✅ Check In sent: $latitude, $longitude at $time';
 
+        // Record check-in time and reset check-out
+        checkInTime = now;
+        checkOutTime = null;
+
         // Initialize debouncing with Check In location
         _lastLocationSentTime = now;
         _lastSentLatitude = latitude;
@@ -541,6 +561,9 @@ class LocationController extends ChangeNotifier {
 
         print("✅ Check Out entry sent successfully");
         lastResult = '✅ Check Out sent: $latitude, $longitude at $time';
+
+        // Record check-out time
+        checkOutTime = now;
       } else {
         print("❌ Failed to get location for Check Out");
         error = '❌ Failed to get location for Check Out';
