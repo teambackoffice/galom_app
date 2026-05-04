@@ -1667,19 +1667,25 @@ class _CreateSalesReturnPageState extends State<CreateSalesReturnPage> {
                   Expanded(
                     child: Row(
                       children: [
-                        IconButton(
-                          onPressed: returnQty > 1
-                              ? () {
-                                  setState(() {
-                                    _selectedItems[itemCode] = returnQty - 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.remove),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
-                            foregroundColor: const Color(0xFF764BA2),
-                            minimumSize: const Size(32, 32),
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: returnQty > 1
+                                ? () {
+                                    setState(() {
+                                      _selectedItems[itemCode] = returnQty - 1;
+                                    });
+                                  }
+                                : null,
+                            icon: const Icon(Icons.remove, size: 18),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              foregroundColor: const Color(0xFF764BA2),
+                              minimumSize: const Size(32, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                           ),
                         ),
                         Container(
@@ -1701,19 +1707,25 @@ class _CreateSalesReturnPageState extends State<CreateSalesReturnPage> {
                             ),
                           ),
                         ),
-                        IconButton(
-                          onPressed: returnQty < maxQty
-                              ? () {
-                                  setState(() {
-                                    _selectedItems[itemCode] = returnQty + 1;
-                                  });
-                                }
-                              : null,
-                          icon: const Icon(Icons.add),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.grey[200],
-                            foregroundColor: const Color(0xFF764BA2),
-                            minimumSize: const Size(32, 32),
+                        SizedBox(
+                          width: 32,
+                          height: 32,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            onPressed: returnQty < maxQty
+                                ? () {
+                                    setState(() {
+                                      _selectedItems[itemCode] = returnQty + 1;
+                                    });
+                                  }
+                                : null,
+                            icon: const Icon(Icons.add, size: 18),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.grey[200],
+                              foregroundColor: const Color(0xFF764BA2),
+                              minimumSize: const Size(32, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
                           ),
                         ),
                       ],
@@ -1805,19 +1817,25 @@ class _CreateSalesReturnPageState extends State<CreateSalesReturnPage> {
                 Expanded(
                   child: Row(
                     children: [
-                      IconButton(
-                        onPressed: returnQty > 1
-                            ? () {
-                                setState(() {
-                                  _selectedItems[itemCode] = returnQty - 1;
-                                });
-                              }
-                            : null,
-                        icon: const Icon(Icons.remove),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
-                          foregroundColor: const Color(0xFF764BA2),
-                          minimumSize: const Size(32, 32),
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: returnQty > 1
+                              ? () {
+                                  setState(() {
+                                    _selectedItems[itemCode] = returnQty - 1;
+                                  });
+                                }
+                              : null,
+                          icon: const Icon(Icons.remove, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey[200],
+                            foregroundColor: const Color(0xFF764BA2),
+                            minimumSize: const Size(32, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
                       ),
                       Container(
@@ -1839,17 +1857,23 @@ class _CreateSalesReturnPageState extends State<CreateSalesReturnPage> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _selectedItems[itemCode] = returnQty + 1;
-                          });
-                        },
-                        icon: const Icon(Icons.add),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.grey[200],
-                          foregroundColor: const Color(0xFF764BA2),
-                          minimumSize: const Size(32, 32),
+                      SizedBox(
+                        width: 32,
+                        height: 32,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          onPressed: () {
+                            setState(() {
+                              _selectedItems[itemCode] = returnQty + 1;
+                            });
+                          },
+                          icon: const Icon(Icons.add, size: 18),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.grey[200],
+                            foregroundColor: const Color(0xFF764BA2),
+                            minimumSize: const Size(32, 32),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
                       ),
                     ],
