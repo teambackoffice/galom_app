@@ -123,6 +123,20 @@ class LoginService {
     }
   }
 
+  Future<List<String>> getRoles() async {
+    try {
+      final storedRoles = await _secureStorage.read(key: 'roles');
+      if (storedRoles != null) {
+        final List decoded = jsonDecode(storedRoles);
+        return decoded.map((role) => role.toString()).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error reading roles: $e');
+      return [];
+    }
+  }
+
   Future<void> logout() async {
     try {
       debugPrint('========== LOGOUT ==========');

@@ -1754,42 +1754,43 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        // Price
-                        Text(
-                          '₹${product.price.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: Color(0xFF764BA2),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        // Tax Badge
-                        if (taxRate > 0) ...[
-                          SizedBox(width: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Text(
-                              'GST: ${taxRate.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                     Wrap(
+                       crossAxisAlignment: WrapCrossAlignment.center,
+                       spacing: 8,
+                       runSpacing: 4,
+                       children: [
+                         // Price
+                         Text(
+                           '₹${product.price.toStringAsFixed(2)}',
+                           style: TextStyle(
+                             color: Color(0xFF764BA2),
+                             fontSize: 14,
+                             fontWeight: FontWeight.w700,
+                           ),
+                         ),
+                         // Tax Badge
+                         if (taxRate > 0)
+                           Container(
+                             padding: EdgeInsets.symmetric(
+                               horizontal: 6,
+                               vertical: 2,
+                             ),
+                             decoration: BoxDecoration(
+                               color: Colors.green.shade50,
+                               borderRadius: BorderRadius.circular(4),
+                               border: Border.all(color: Colors.green.shade200),
+                             ),
+                             child: Text(
+                               'GST: ${taxRate.toStringAsFixed(1)}%',
+                               style: TextStyle(
+                                 fontSize: 10,
+                                 color: Colors.green.shade700,
+                                 fontWeight: FontWeight.w600,
+                               ),
+                             ),
+                           ),
+                       ],
+                     ),
                   ],
                 ),
               ),
@@ -2109,7 +2110,10 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                         ),
                       ),
                       SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Text(
                             '₹${item.rate.toStringAsFixed(2)} × ${item.qty}',
@@ -2118,8 +2122,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                               fontSize: 14,
                             ),
                           ),
-                          if (item.taxRate > 0) ...[
-                            SizedBox(width: 8),
+                          if (item.taxRate > 0)
                             Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 6,
@@ -2141,7 +2144,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                                 ),
                               ),
                             ),
-                          ],
                         ],
                       ),
                     ],

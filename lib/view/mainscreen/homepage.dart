@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/invoice.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/gm_leave/leave_list.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/leave_application.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/location_track.dart';
 import 'package:location_tracker_app/view/mainscreen/profile_page/profile_page.dart';
@@ -15,13 +18,39 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _isSystemManager = false;
 
-  final List<Widget> _pages = [
+  @override
+  void initState() {
+    super.initState();
+    _checkRole();
+  }
+
+  Future<void> _checkRole() async {
+    const storage = FlutterSecureStorage();
+    try {
+      final storedRole = await storage.read(key: 'roles');
+      if (storedRole != null) {
+        final List rolesList = jsonDecode(storedRole);
+        final hasSystemManager = rolesList.any(
+          (role) => role.toString().trim().toLowerCase() == 'system manager',
+        );
+        if (hasSystemManager) {
+          setState(() {
+            _isSystemManager = true;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading roles: $e');
+    }
+  }
+
+  List<Widget> get _pages => [
     LocationTrackingPage(),
     SalesOrdersListPage(),
     InvoicePage(),
-    LeaveApplication(),
-
+    _isSystemManager ? LeaveListScreen() : LeaveApplication(),
     ProfilePage(),
   ];
 
