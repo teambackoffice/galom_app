@@ -140,7 +140,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             _buildDetailItem(
                               Icons.business,
                               'Company',
-                              'Galom ',
+                              'Galom International Pvt Ltd ',
                             ),
                           ],
                         ),
