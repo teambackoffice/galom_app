@@ -1,6 +1,6 @@
-// services/create_leave_application_service.dart
-
 import 'dart:convert';
+import 'dart:developer' as developer;
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -22,9 +22,20 @@ class CreateLeaveApplicationService {
     try {
       final sid = await _secureStorage.read(key: 'sid');
 
+      developer.log('========== CREATE LEAVE APPLICATION API ==========');
+      developer.log('URL: $url');
+      developer.log('SID: $sid');
+
       if (sid == null || sid.isEmpty) {
+        developer.log('❌ SID token not found in secure storage');
         throw Exception('SID token not found in secure storage');
       }
+
+      final headers = {
+        'Authorization': 'token $sid',
+        'Content-Type': 'application/json',
+        'Cookie': 'sid=$sid',
+      };
 
       final body = {
         "employee": employee,
@@ -36,22 +47,42 @@ class CreateLeaveApplicationService {
         "half_day_date": halfDayDate,
       };
 
+      developer.log('Request Headers:\n${jsonEncode(headers)}');
+      developer.log(
+        'Request Body:\n${const JsonEncoder.withIndent('  ').convert(body)}',
+      );
+
       final response = await http.post(
         Uri.parse(url),
-        headers: {
-          'Authorization': 'token $sid',
-          'Content-Type': 'application/json',
-          'Cookie': 'sid=$sid',
-        },
+        headers: headers,
         body: jsonEncode(body),
       );
 
+      developer.log('Status Code: ${response.statusCode}');
+      developer.log('Response Headers:\n${jsonEncode(response.headers)}');
+      developer.log('Raw Response Body:\n${response.body}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final jsonData = jsonDecode(response.body);
+
+        developer.log(
+          'Formatted Response:\n${const JsonEncoder.withIndent('  ').convert(jsonData)}',
+        );
+
+        developer.log('========== API SUCCESS ==========');
+
+        return jsonData;
       } else {
+        developer.log(
+          '❌ API FAILED\n'
+          'Status Code: ${response.statusCode}\n'
+          'Response Body: ${response.body}',
+        );
+
         throw Exception('Failed to create leave application: ${response.body}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      developer.log('❌ Exception: $e', stackTrace: stackTrace);
       return null;
     }
   }

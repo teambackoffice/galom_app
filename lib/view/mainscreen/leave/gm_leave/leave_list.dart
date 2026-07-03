@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:location_tracker_app/controller/admin_get_leaves_controller.dart';
+import 'package:location_tracker_app/modal/admin_leaves_modal.dart';
+import 'package:location_tracker_app/service/admin_get_leave_service.dart';
+import 'package:provider/provider.dart';
+import 'package:location_tracker_app/controller/create_leave_controller.dart';
+import 'package:location_tracker_app/controller/leave_application_controller.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/leave_application.dart';
 
-void main() => runApp(const LeaveApprovalApp());
-
-// ── Palette ─────────────────────────────────────────────────────────────
+// ── Palette ──────────────────────────────────────────────────────────────────
 class AppColors {
   static const bg = Color(0xFFF7F5F0);
   static const surface = Color(0xFFFFFFFF);
@@ -48,6 +53,7 @@ class LeaveApprovalApp extends StatelessWidget {
 
 enum LeaveStatus { pending, approved, rejected }
 
+// ── UI model (unchanged) ──────────────────────────────────────────────────────
 class LeaveRequest {
   final String id;
   final String name;
@@ -61,6 +67,7 @@ class LeaveRequest {
   final String reason;
   final int balance;
   LeaveStatus status;
+  String rawStatus;
 
   LeaveRequest({
     required this.id,
@@ -75,78 +82,90 @@ class LeaveRequest {
     required this.reason,
     required this.balance,
     this.status = LeaveStatus.pending,
+    required this.rawStatus,
   });
 }
 
-final List<LeaveRequest> demoLeaves = [
-  LeaveRequest(
-    id: '1',
-    name: 'Priya Nair',
-    role: 'Product Designer',
-    initials: 'PN',
-    type: 'Annual leave',
-    from: 'Jul 14, 2026',
-    to: 'Jul 18, 2026',
-    days: 5,
-    applied: 'Jun 28, 2026',
-    reason: "Family trip to Munnar planned for the kids' summer break.",
-    balance: 12,
-  ),
-  LeaveRequest(
-    id: '2',
-    name: 'Arjun Menon',
-    role: 'Backend Engineer',
-    initials: 'AM',
-    type: 'Sick leave',
-    from: 'Jul 1, 2026',
-    to: 'Jul 2, 2026',
-    days: 2,
-    applied: 'Jun 30, 2026',
-    reason: 'Fever and viral infection, doctor advised rest for 2 days.',
-    balance: 6,
-  ),
-  LeaveRequest(
-    id: '3',
-    name: 'Sara Thomas',
-    role: 'QA Analyst',
-    initials: 'ST',
-    type: 'Casual leave',
-    from: 'Jul 10, 2026',
-    to: 'Jul 10, 2026',
-    days: 1,
-    applied: 'Jun 27, 2026',
-    reason: "Attending a relative's wedding ceremony.",
-    balance: 4,
-  ),
-  LeaveRequest(
-    id: '4',
-    name: 'Kiran Das',
-    role: 'DevOps Engineer',
-    initials: 'KD',
-    type: 'Annual leave',
-    from: 'Aug 3, 2026',
-    to: 'Aug 7, 2026',
-    days: 5,
-    applied: 'Jun 25, 2026',
-    reason: 'Pre-planned vacation, travel tickets already booked.',
-    balance: 9,
-  ),
-  LeaveRequest(
-    id: '5',
-    name: 'Lakshmi Pillai',
-    role: 'HR Associate',
-    initials: 'LP',
-    type: 'Sick leave',
-    from: 'Jun 29, 2026',
-    to: 'Jun 30, 2026',
-    days: 2,
-    applied: 'Jun 29, 2026',
-    reason: 'Recovering from minor surgery, needs short rest period.',
-    balance: 5,
-  ),
-];
+// ── Mapping helpers ───────────────────────────────────────────────────────────
 
-// ── Status styling helper ──────────────────────────────────────────────
+/// "Open" → pending, "Approved" → approved, "Rejected" → rejected
+LeaveStatus _mapStatus(String apiStatus) {
+  switch (apiStatus.toLowerCase()) {
+    case 'approved':
+      return LeaveStatus.approved;
+    case 'rejected':
+      return LeaveStatus.rejected;
+    default: // "Open" or anything else
+      return LeaveStatus.pending;
+  }
+}
+
+/// Returns the reverse string suitable for the API call (used when
+/// approving / rejecting through the backend).
+String _statusToApiString(LeaveStatus s) {
+  switch (s) {
+    case LeaveStatus.approved:
+      return 'Approved';
+    case LeaveStatus.rejected:
+      return 'Rejected';
+    case LeaveStatus.pending:
+      return 'Open';
+  }
+}
+
+/// Derives two-letter initials from a full name, e.g. "Priya Nair" → "PN".
+String _initials(String fullName) {
+  final parts = fullName.trim().split(RegExp(r'\s+'));
+  if (parts.isEmpty) return '?';
+  if (parts.length == 1) return parts[0][0].toUpperCase();
+  return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+}
+
+/// Formats a raw API date string ("2026-07-14") to a readable label
+/// ("Jul 14, 2026"). Falls back to the raw value if parsing fails.
+String _fmtDate(String raw) {
+  try {
+    final d = DateTime.parse(raw);
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  } catch (_) {
+    return raw;
+  }
+}
+
+/// Converts the API model to the UI model.
+LeaveRequest _toLeaveRequest(AdminLeaveApplicationModalClass a) {
+  return LeaveRequest(
+    id: a.name, // doc-name as unique id
+    name: a.employeeName,
+    role: a.department ?? 'Employee', // department as role label
+    initials: _initials(a.employeeName),
+    type: a.leaveType,
+    from: _fmtDate(a.fromDate),
+    to: _fmtDate(a.toDate),
+    days: a.totalLeaveDays.toInt(),
+    applied: _fmtDate(a.postingDate),
+    reason: a.description ?? 'No reason provided.',
+    balance: a.leaveBalance.toInt(),
+    status: _mapStatus(a.status),
+    rawStatus: a.status,
+  );
+}
+
+// ── Status styling helper ─────────────────────────────────────────────────────
 class _StatusStyle {
   final Color fg;
   final Color bg;
@@ -192,7 +211,7 @@ const _avatarPalette = [
 List<Color> avatarColors(String seed) =>
     _avatarPalette[seed.codeUnitAt(0) % _avatarPalette.length];
 
-// ── List screen ─────────────────────────────────────────────────────────
+// ── List screen ───────────────────────────────────────────────────────────────
 class LeaveListScreen extends StatefulWidget {
   const LeaveListScreen({super.key});
 
@@ -201,13 +220,56 @@ class LeaveListScreen extends StatefulWidget {
 }
 
 class _LeaveListScreenState extends State<LeaveListScreen> {
-  final List<LeaveRequest> leaves = demoLeaves;
-  LeaveStatus? filter; // null = all
+  // ── Controller ──────────────────────────────────────────────────────────────
+  final GetAdminLeaveApplicationController _controller =
+      GetAdminLeaveApplicationController();
 
-  int countOf(LeaveStatus s) => leaves.where((l) => l.status == s).length;
+  // Local mutable copies so approve / reject updates are reflected immediately
+  // without a full re-fetch.
+  List<LeaveRequest> _leaves = [];
 
-  List<LeaveRequest> get visible => leaves.where((l) {
-    final matchesFilter = filter == null || l.status == filter;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onControllerUpdate);
+    _controller.fetchLeaveApplications();
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onControllerUpdate);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onControllerUpdate() {
+    if (!mounted) return;
+    setState(() {
+      if (!_controller.isLoading) {
+        if (_controller.leaveApplications.isEmpty && _leaves.isEmpty) {
+          _errorMessage = 'No leave applications found.';
+        } else {
+          _errorMessage = null;
+          // Only replace the list on fresh load (not on local status mutation).
+          if (_leaves.isEmpty) {
+            _leaves = _controller.leaveApplications
+                .map(_toLeaveRequest)
+                .toList();
+          }
+        }
+      }
+    });
+  }
+
+  // ── Filter & search ─────────────────────────────────────────────────────────
+  LeaveStatus? _filter;
+  bool _isSearchExpanded = false;
+  String _searchQuery = '';
+
+  List<LeaveRequest> get _visible => _leaves.where((l) {
+    final matchesFilter = _filter == null || l.status == _filter;
     final q = _searchQuery.toLowerCase();
     final matchesSearch =
         q.isEmpty ||
@@ -216,6 +278,7 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
     return matchesFilter && matchesSearch;
   }).toList();
 
+  // ── Navigation ──────────────────────────────────────────────────────────────
   Future<void> _openDetail(LeaveRequest leave) async {
     await Navigator.of(context).push(
       PageRouteBuilder(
@@ -226,25 +289,23 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
         ),
       ),
     );
-    setState(() {});
+    setState(() {}); // reflect any status change made on the detail screen
   }
 
-  bool _isSearchExpanded = false;
-  String _searchQuery = '';
-
+  // ── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
+            // ── Header ───────────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Header row ─────────────────────────────────
                     Row(
                       children: [
                         Container(
@@ -280,6 +341,22 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
                             ),
                           ),
                         ),
+                        // Refresh button
+                        if (!_controller.isLoading)
+                          IconButton(
+                            onPressed: _refreshData,
+                            icon: const Icon(
+                              Icons.refresh_rounded,
+                              color: Colors.black,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.9),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        const SizedBox(width: 6),
                         // Search toggle
                         IconButton(
                           onPressed: () => setState(() {
@@ -299,10 +376,9 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
                       ],
                     ),
-                    // ── Search box ──────────────────────────────────
+                    // ── Search box ───────────────────────────────────────────
                     if (_isSearchExpanded) ...[
                       const SizedBox(height: 14),
                       TextField(
@@ -346,6 +422,8 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
                 ),
               ),
             ),
+
+            // ── Filter chips ─────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 44,
@@ -355,116 +433,148 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
                   children: [
                     _FilterChip(
                       label: 'All',
-                      selected: filter == null,
-                      onTap: () => setState(() => filter = null),
+                      selected: _filter == null,
+                      onTap: () => setState(() => _filter = null),
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: 'Pending',
-                      selected: filter == LeaveStatus.pending,
-                      onTap: () => setState(() => filter = LeaveStatus.pending),
+                      selected: _filter == LeaveStatus.pending,
+                      onTap: () =>
+                          setState(() => _filter = LeaveStatus.pending),
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: 'Approved',
-                      selected: filter == LeaveStatus.approved,
+                      selected: _filter == LeaveStatus.approved,
                       onTap: () =>
-                          setState(() => filter = LeaveStatus.approved),
+                          setState(() => _filter = LeaveStatus.approved),
                     ),
                     const SizedBox(width: 8),
                     _FilterChip(
                       label: 'Rejected',
-                      selected: filter == LeaveStatus.rejected,
+                      selected: _filter == LeaveStatus.rejected,
                       onTap: () =>
-                          setState(() => filter = LeaveStatus.rejected),
+                          setState(() => _filter = LeaveStatus.rejected),
                     ),
                   ],
                 ),
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+            // ── Content ──────────────────────────────────────────────────────
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              sliver: visible.isEmpty
-                  ? const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: 60),
-                        child: Center(
-                          child: Text(
-                            'Nothing here.',
-                            style: TextStyle(
-                              color: AppColors.inkMuted,
-                              fontFamily: 'Roboto',
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : SliverList.separated(
-                      itemCount: visible.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final leave = visible[index];
-                        return _LeaveCard(
-                          leave: leave,
-                          onTap: () => _openDetail(leave),
-                        );
-                      },
-                    ),
+              sliver: _buildContent(),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-  final Color bg;
-  const _StatTile({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.bg,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$value',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: color,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                  create: (_) => CreateLeaveApplicationController(),
+                ),
+                ChangeNotifierProvider(
+                  create: (_) => GetLeaveApplicationController(),
+                ),
+              ],
+              child: const LeaveApplySheet(),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color.withOpacity(0.85),
-              fontFamily: 'Roboto',
-            ),
-          ),
-        ],
+          );
+        },
+        backgroundColor: AppColors.indigo,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
+
+  Widget _buildContent() {
+    // Loading state
+    if (_controller.isLoading) {
+      return const SliverFillRemaining(
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.indigo),
+        ),
+      );
+    }
+
+    // Error / empty state
+    if (_errorMessage != null) {
+      return SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.inbox_rounded,
+                size: 48,
+                color: AppColors.inkMuted,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _errorMessage!,
+                style: const TextStyle(
+                  color: AppColors.inkMuted,
+                  fontFamily: 'Roboto',
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextButton.icon(
+                onPressed: _refreshData,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final items = _visible;
+
+    if (items.isEmpty) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.only(top: 60),
+          child: Center(
+            child: Text(
+              'Nothing here.',
+              style: TextStyle(color: AppColors.inkMuted, fontFamily: 'Roboto'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList.separated(
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final leave = items[index];
+        return _LeaveCard(leave: leave, onTap: () => _openDetail(leave));
+      },
+    );
+  }
+
+  /// Clears the local list first so the controller update rebuilds it fresh.
+  void _refreshData() {
+    setState(() {
+      _leaves = [];
+      _errorMessage = null;
+    });
+    _controller.fetchLeaveApplications();
+  }
 }
 
+// ── Filter chip ───────────────────────────────────────────────────────────────
 class _FilterChip extends StatelessWidget {
   final String label;
   final bool selected;
@@ -505,6 +615,7 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
+// ── Leave card ────────────────────────────────────────────────────────────────
 class _LeaveCard extends StatelessWidget {
   final LeaveRequest leave;
   final VoidCallback onTap;
@@ -515,86 +626,176 @@ class _LeaveCard extends StatelessWidget {
     final style = statusStyle(leave.status);
     final colors = avatarColors(leave.id);
 
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.line, width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: colors[0],
-                child: Text(
-                  leave.initials,
-                  style: TextStyle(
-                    color: colors[1],
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    fontFamily: 'Roboto',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+        ],
+        border: Border.all(color: AppColors.line.withOpacity(0.6), width: 1),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: style.fg, width: 4)),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      leave.name,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink,
-                        fontFamily: 'Roboto',
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Modern Squircle/Rounded Avatar
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: colors[0],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            leave.initials,
+                            style: TextStyle(
+                              color: colors[1],
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              fontFamily: 'Roboto',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        // Name and Role/Type (with full horizontal space)
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                leave.name.isNotEmpty
+                                    ? leave.name[0].toUpperCase() +
+                                          leave.name.substring(1)
+                                    : '',
+                                style: const TextStyle(
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.ink,
+                                  fontFamily: 'Roboto',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                leave.role,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.inkMuted,
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${leave.type} · ${leave.days} day${leave.days > 1 ? 's' : ''} · ${leave.from}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.inkMuted,
-                        fontFamily: 'Roboto',
-                      ),
+                    const SizedBox(height: 14),
+                    const Divider(height: 1, color: AppColors.line),
+                    const SizedBox(height: 12),
+                    // Details row: Type, Duration, From date, and Status Badge
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Left: Leave Details
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      leave.type,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.ink,
+                                        fontFamily: 'Roboto',
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 6),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    leave.from,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.inkMuted,
+                                      fontFamily: 'Roboto',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Right: Premium Pill Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: style.bg,
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(style.icon, size: 12, color: style.fg),
+                              const SizedBox(width: 4),
+                              Text(
+                                leave.rawStatus,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: style.fg,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                decoration: BoxDecoration(
-                  color: style.bg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(style.icon, size: 13, color: style.fg),
-                    const SizedBox(width: 4),
-                    Text(
-                      style.label,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: style.fg,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Roboto',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -602,7 +803,7 @@ class _LeaveCard extends StatelessWidget {
   }
 }
 
-// ── Detail screen ──────────────────────────────────────────────────────
+// ── Detail screen ─────────────────────────────────────────────────────────────
 class LeaveDetailScreen extends StatefulWidget {
   final LeaveRequest leave;
   const LeaveDetailScreen({super.key, required this.leave});
@@ -623,7 +824,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
   Future<void> _setStatus(LeaveStatus status) async {
     final isApproved = status == LeaveStatus.approved;
 
-    // ── Confirmation dialog ──────────────────────────────────────────
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -639,7 +839,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Icon circle
               Container(
                 width: 64,
                 height: 64,
@@ -656,7 +855,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              // Title
               Text(
                 isApproved ? 'Approve leave?' : 'Reject leave?',
                 style: const TextStyle(
@@ -667,7 +865,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // Body
               Text(
                 isApproved
                     ? 'You are about to approve the leave request from ${leave.name}. This action will notify the employee.'
@@ -683,7 +880,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
               const SizedBox(height: 24),
               const Divider(height: 1, color: AppColors.line),
               const SizedBox(height: 16),
-              // Buttons
               Row(
                 children: [
                   Expanded(
@@ -738,17 +934,23 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    // ── Apply status & show success sheet ────────────────────────────
-    setState(() => leave.status = status);
+    setState(() {
+      leave.status = status;
+      leave.rawStatus = _statusToApiString(status);
+    });
+
+    // ── TODO: call your update-status API here ────────────────────────────────
+    // e.g. await UpdateLeaveStatusService().update(leave.id, _statusToApiString(status));
+    // ─────────────────────────────────────────────────────────────────────────
 
     final successStyle = isApproved
-        ? _StatusStyle(
+        ? const _StatusStyle(
             AppColors.green,
             AppColors.greenSoft,
             'Approved',
             Icons.check_circle_rounded,
           )
-        : _StatusStyle(
+        : const _StatusStyle(
             AppColors.red,
             AppColors.redSoft,
             'Rejected',
@@ -859,6 +1061,34 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _dateRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.inkMuted,
+              fontFamily: 'Roboto',
+              fontSize: 13.5,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: 'Roboto',
+              fontWeight: FontWeight.w600,
+              fontSize: 13.5,
+              color: AppColors.ink,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -984,7 +1214,7 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
                       Icon(style.icon, size: 14, color: style.fg),
                       const SizedBox(width: 5),
                       Text(
-                        style.label,
+                        leave.rawStatus,
                         style: TextStyle(
                           fontSize: 12,
                           color: style.fg,
@@ -1124,34 +1354,6 @@ class _LeaveDetailScreenState extends State<LeaveDetailScreen> {
               ),
             )
           : null,
-    );
-  }
-
-  Widget _dateRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.inkMuted,
-              fontFamily: 'Roboto',
-              fontSize: 13.5,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w600,
-              fontSize: 13.5,
-              color: AppColors.ink,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
