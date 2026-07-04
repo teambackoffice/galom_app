@@ -15,10 +15,6 @@ class GetLeaveApplicationService {
     try {
       final sid = await _secureStorage.read(key: 'sid');
 
-      developer.log('========== GET LEAVE APPLICATION API ==========');
-      developer.log('URL: $url');
-      developer.log('SID: $sid');
-
       if (sid == null || sid.isEmpty) {
         developer.log('❌ SID token not found in secure storage');
         throw Exception('SID token not found in secure storage');
@@ -44,8 +40,6 @@ class GetLeaveApplicationService {
         developer.log(
           'Formatted Response:\n${const JsonEncoder.withIndent('  ').convert(jsonData)}',
         );
-
-        developer.log('========== API SUCCESS ==========');
 
         return LeaveApplicationModalClass.fromJson(jsonData);
       } else {

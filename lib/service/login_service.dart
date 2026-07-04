@@ -50,6 +50,7 @@ class LoginService {
         final empId = message['employee_id'];
         final empName = message['employee_name'];
         final salesPersonId = message['sales_person_id'];
+        final roleProfile = message['role_profile_name'];
 
         debugPrint('========== EXTRACTED VALUES ==========');
         debugPrint('Full Name: $fullName');
@@ -61,6 +62,7 @@ class LoginService {
         debugPrint('Employee ID: $empId');
         debugPrint('Employee Name: $empName');
         debugPrint('Sales Person ID: $salesPersonId');
+        debugPrint('Role profile is $roleProfile');
         debugPrint('======================================');
 
         // Store values in secure storage
@@ -75,6 +77,7 @@ class LoginService {
           key: 'sales_person_id',
           value: salesPersonId,
         );
+        await _secureStorage.write(key: 'role_profile', value: roleProfile);
         await _secureStorage.write(key: 'roles', value: jsonEncode(roles));
 
         debugPrint('========== STORAGE SUCCESS ==========');
@@ -134,6 +137,17 @@ class LoginService {
     } catch (e) {
       debugPrint('Error reading roles: $e');
       return [];
+    }
+  }
+
+  Future<String?> getRoleProfile() async {
+    try {
+      final roleProfile = await _secureStorage.read(key: 'role_profile');
+      debugPrint('Retrieved Role Profile: $roleProfile');
+      return roleProfile;
+    } catch (e) {
+      debugPrint('Error reading role_profile: $e');
+      return null;
     }
   }
 

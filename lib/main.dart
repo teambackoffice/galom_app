@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:location_tracker_app/controller/admin_get_leaves_controller.dart';
+import 'package:location_tracker_app/controller/approve_reject_leave_controller.dart';
 import 'package:location_tracker_app/controller/attendance_check_controller.dart';
 import 'package:location_tracker_app/controller/create_leave_controller.dart';
 import 'package:location_tracker_app/controller/create_payment_entry_controller.dart';
@@ -82,6 +83,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => UpdatedAttendanceController()),
         ChangeNotifierProvider(
           create: (_) => GetAdminLeaveApplicationController(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => LeaveApprovalRejectController(),
         ),
       ],
       child: MaterialApp(
