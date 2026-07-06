@@ -4,6 +4,7 @@ import 'package:location_tracker_app/controller/leave_application_controller.dar
 import 'package:provider/provider.dart';
 import 'package:location_tracker_app/modal/leave_applicatrion_modal.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:location_tracker_app/controller/leave_type_controller.dart';
 
 // --- Entry Point Widget ---
 class LeaveApplication extends StatelessWidget {
@@ -402,8 +403,15 @@ class _LeaveListPageState extends State<LeaveListPage> {
             context: context,
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
-            builder: (_) => ChangeNotifierProvider(
-              create: (_) => CreateLeaveApplicationController(),
+            builder: (_) => MultiProvider(
+              providers: [
+                ChangeNotifierProvider(
+                  create: (_) => CreateLeaveApplicationController(),
+                ),
+                ChangeNotifierProvider.value(
+                  value: context.read<LeaveTypesController>(),
+                ),
+              ],
               child: const LeaveApplySheet(),
             ),
           ),
@@ -599,14 +607,20 @@ class LeaveApplySheet extends StatefulWidget {
 }
 
 class _LeaveApplySheetState extends State<LeaveApplySheet> {
-  final List<String> leaveTypes = const ['Sick Leave', 'Casual Leave'];
-
-  String selectedType = 'Sick Leave';
+  String? selectedType;
   DateTime? fromDate;
   DateTime? toDate;
   bool isHalfDay = false;
   String halfDaySession = 'Morning';
   final TextEditingController reasonController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<LeaveTypesController>().loadLeaveTypes();
+    });
+  }
 
   @override
   void dispose() {
@@ -676,6 +690,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
   }
 
   String? _validate() {
+    if (selectedType == null) return 'Please select a leave type';
     if (fromDate == null) return 'Please select a start date';
     if (!isHalfDay && toDate == null) return 'Please select an end date';
     return null;
@@ -724,7 +739,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
 
     await controller.submitLeaveApplication(
       employee: employee,
-      leaveType: selectedType,
+      leaveType: selectedType ?? '',
       fromDate: fromDateStr,
       toDate: toDateStr,
       description: reasonController.text.trim(),
@@ -817,10 +832,39 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
                   children: [
                     _fieldLabel('Leave type'),
                     const SizedBox(height: 6),
-                    _DropdownField(
-                      value: selectedType,
-                      items: leaveTypes,
-                      onChanged: (v) => setState(() => selectedType = v!),
+                    Consumer<LeaveTypesController>(
+                      builder: (context, typesCtrl, _) {
+                        if (typesCtrl.isLoading) {
+                          return const Center(
+                            child: SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF1A1A1A),
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          );
+                        }
+                        final items = typesCtrl.leaveTypes;
+                        if (items.isEmpty) {
+                          return Text(
+                            typesCtrl.errorMessage ?? 'No leave types available',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFFE24B4A),
+                            ),
+                          );
+                        }
+                        if (selectedType == null || !items.contains(selectedType)) {
+                          selectedType = items.first;
+                        }
+                        return _DropdownField(
+                          value: selectedType!,
+                          items: items,
+                          onChanged: (v) => setState(() => selectedType = v),
+                        );
+                      },
                     ),
                     const SizedBox(height: 16),
                     _HalfDayToggleRow(
