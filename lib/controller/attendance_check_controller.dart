@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:location_tracker_app/service/attendance_check.dart';
 
 // Key used to persist today's check-in time across restarts
@@ -92,6 +93,45 @@ class UpdatedAttendanceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Helper to get current location coordinates
+  Future<Position?> _getCurrentPosition() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        error = 'Location services are disabled. Please enable GPS.';
+        notifyListeners();
+        await Geolocator.openLocationSettings();
+        return null;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          error = 'Location permissions are denied.';
+          notifyListeners();
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        error = 'Location permissions are permanently denied. Please enable them in settings.';
+        notifyListeners();
+        await Geolocator.openAppSettings();
+        return null;
+      }
+
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+    } catch (e) {
+      error = 'Error getting location: $e';
+      notifyListeners();
+      print('[AttendanceCtrl] Error getting position: $e');
+      return null;
+    }
+  }
+
   // ── POST: Check In ──────────────────────────────────────────────────────────
   Future<void> startTracking() async {
     if (employeeId.isEmpty) {
@@ -102,7 +142,19 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
     _setLoading(true);
 
-    final result = await _service.addCheckIn(logType: 'IN');
+    double? lat;
+    double? lon;
+    final position = await _getCurrentPosition();
+    if (position != null) {
+      lat = position.latitude;
+      lon = position.longitude;
+    }
+
+    final result = await _service.addCheckIn(
+      logType: 'IN',
+      latitude: lat,
+      longitude: lon,
+    );
 
     if (result['success'] == true) {
       isTracking = true;
@@ -128,7 +180,19 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
     _setLoading(true);
 
-    final result = await _service.addCheckIn(logType: 'OUT');
+    double? lat;
+    double? lon;
+    final position = await _getCurrentPosition();
+    if (position != null) {
+      lat = position.latitude;
+      lon = position.longitude;
+    }
+
+    final result = await _service.addCheckIn(
+      logType: 'OUT',
+      latitude: lat,
+      longitude: lon,
+    );
 
     if (result['success'] == true) {
       isTracking = false;

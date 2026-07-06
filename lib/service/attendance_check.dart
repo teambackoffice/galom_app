@@ -51,8 +51,11 @@ class AttendanceService {
     }
   }
 
-  // ── POST check-in / check-out ───────────────────────────────────────────────
-  Future<Map<String, dynamic>> addCheckIn({required String logType}) async {
+  Future<Map<String, dynamic>> addCheckIn({
+    required String logType,
+    double? latitude,
+    double? longitude,
+  }) async {
     final sid = await _token();
     final employeeId = await _employeeId();
 
@@ -66,7 +69,12 @@ class AttendanceService {
     final uri = Uri.parse('$_baseModule.add_employee_checkin');
     print("Uri: $uri");
 
-    final body = {'log_type': logType, 'employee': employeeId};
+    final body = {
+      'log_type': logType,
+      'employee': employeeId,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+    };
 
     _log("REQUEST BODY", body);
     print("Body: ${jsonEncode(body)}");
