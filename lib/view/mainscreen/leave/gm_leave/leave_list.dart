@@ -277,60 +277,93 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
     setState(() {}); // reflect any status change made on the detail screen
   }
 
+  Future<void> _handleRefresh() async {
+    setState(() {
+      _leaves = [];
+      _errorMessage = null;
+    });
+    await _controller.fetchLeaveApplications();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // ── Header ───────────────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF764BA2).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppColors.indigo,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // ── Header ───────────────────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF0D1B3E), Color(0xFF1A3A6E)],
                               ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.event_available_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        const Expanded(
-                          child: Text(
-                            'Leave approvals',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF2D3436),
-                              fontFamily: 'Roboto',
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF764BA2,
+                                  ).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.event_available_rounded,
+                              color: Colors.white,
+                              size: 22,
                             ),
                           ),
-                        ),
-                        // Refresh button
-                        if (!_controller.isLoading)
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Text(
+                              'Leave Approvals',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF2D3436),
+                              ),
+                            ),
+                          ),
+                          // Refresh button
+                          // if (!_controller.isLoading)
+                          //   IconButton(
+                          //     onPressed: _refreshData,
+                          //     icon: const Icon(
+                          //       Icons.refresh_rounded,
+                          //       color: Colors.black,
+                          //     ),
+                          //     style: IconButton.styleFrom(
+                          //       backgroundColor: Colors.white.withOpacity(0.9),
+                          //       shape: RoundedRectangleBorder(
+                          //         borderRadius: BorderRadius.circular(12),
+                          //       ),
+                          //     ),
+                          //   ),
+                          // const SizedBox(width: 6),
+                          // Search toggle
                           IconButton(
-                            onPressed: _refreshData,
-                            icon: const Icon(
-                              Icons.refresh_rounded,
+                            onPressed: () => setState(() {
+                              _isSearchExpanded = !_isSearchExpanded;
+                              if (!_isSearchExpanded) _searchQuery = '';
+                            }),
+                            icon: Icon(
+                              _isSearchExpanded
+                                  ? Icons.close_rounded
+                                  : Icons.search_rounded,
                               color: Colors.black,
                             ),
                             style: IconButton.styleFrom(
@@ -340,81 +373,64 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
                               ),
                             ),
                           ),
-                        const SizedBox(width: 6),
-                        // Search toggle
-                        IconButton(
-                          onPressed: () => setState(() {
-                            _isSearchExpanded = !_isSearchExpanded;
-                            if (!_isSearchExpanded) _searchQuery = '';
-                          }),
-                          icon: Icon(
-                            _isSearchExpanded
-                                ? Icons.close_rounded
-                                : Icons.search_rounded,
-                            color: Colors.black,
-                          ),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.9),
-                            shape: RoundedRectangleBorder(
+                        ],
+                      ),
+                      // ── Search box ───────────────────────────────────────────
+                      if (_isSearchExpanded) ...[
+                        const SizedBox(height: 14),
+                        TextField(
+                          autofocus: true,
+                          decoration: InputDecoration(
+                            hintText: 'Search by name or leave type…',
+                            hintStyle: const TextStyle(
+                              color: AppColors.inkMuted,
+                              fontFamily: 'Roboto',
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search_rounded,
+                              color: AppColors.inkMuted,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.line,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.line,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                color: AppColors.indigo,
+                                width: 1.5,
+                              ),
                             ),
                           ),
+                          onChanged: (v) => setState(() => _searchQuery = v),
                         ),
                       ],
-                    ),
-                    // ── Search box ───────────────────────────────────────────
-                    if (_isSearchExpanded) ...[
-                      const SizedBox(height: 14),
-                      TextField(
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: 'Search by name or leave type…',
-                          hintStyle: const TextStyle(
-                            color: AppColors.inkMuted,
-                            fontFamily: 'Roboto',
-                          ),
-                          prefixIcon: const Icon(
-                            Icons.search_rounded,
-                            color: AppColors.inkMuted,
-                          ),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: AppColors.line),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                              color: AppColors.indigo,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                        onChanged: (v) => setState(() => _searchQuery = v),
-                      ),
+                      const SizedBox(height: 18),
                     ],
-                    const SizedBox(height: 18),
-                  ],
+                  ),
                 ),
               ),
-            ),
 
-
-
-            // ── Content ──────────────────────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              sliver: _buildContent(),
-            ),
-          ],
+              // ── Content ──────────────────────────────────────────────────────
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                sliver: _buildContent(),
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -519,8 +535,6 @@ class _LeaveListScreenState extends State<LeaveListScreen> {
     _controller.fetchLeaveApplications();
   }
 }
-
-
 
 // ── Leave card ────────────────────────────────────────────────────────────────
 class _LeaveCard extends StatelessWidget {

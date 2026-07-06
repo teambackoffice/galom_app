@@ -244,17 +244,16 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
                 const Text(
                   'Attendance',
                   style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
                     color: Color(0xFF0D1B3E),
-                    letterSpacing: -0.5,
                   ),
                 ),
                 Text(
                   _formatDate(),
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF636E72),
+                    color: Color(0xFF2D3436),
                   ),
                 ),
               ],
