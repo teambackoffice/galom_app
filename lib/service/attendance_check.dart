@@ -11,13 +11,11 @@ class AttendanceService {
   Future<String?> _token() => _storage.read(key: 'sid');
   Future<String?> _employeeId() => _storage.read(key: 'employee_id');
 
-  void _log(String title, dynamic data) {
-    print('===== $title =====');
-    print(data);
-    print('======================');
-  }
+  void _log(String title, dynamic data) {}
 
-  // ── GET employee status ─────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────
+  // GET EMPLOYEE STATUS
+  // ─────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> getEmployeeStatus() async {
     final sid = await _token();
     final employeeId = await _employeeId();
@@ -26,35 +24,44 @@ class AttendanceService {
       throw Exception('Session expired. Please login again.');
     }
 
-    final uri = Uri.parse('$_baseModule.get_employee_status?employee=$employeeId');
-
-    _log("REQUEST URL", uri);
-
-    final response = await http.get(
-      uri,
-      headers: {
-        'Authorization': 'token $sid',
-        'Content-Type': 'application/json',
-        "Cookie": "sid=$sid",
-      },
+    final uri = Uri.parse(
+      '$_baseModule.get_employee_status?employee=$employeeId',
     );
 
-    _log("STATUS CODE", response.statusCode);
-    _log("RAW RESPONSE", response.body);
+    final headers = {
+      'Authorization': 'token $sid',
+      'Content-Type': 'application/json',
+      'Cookie': 'sid=$sid',
+    };
 
-    final decoded = json.decode(response.body);
+    try {
+      final response = await http.get(uri, headers: headers);
 
-    if (response.statusCode == 200) {
-      return decoded;
-    } else {
-      throw Exception(decoded['message'] ?? 'Error');
+      final decoded = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return decoded;
+      } else {
+        throw Exception(decoded['message'] ?? 'Unknown Error');
+      }
+    } catch (e, stackTrace) {
+      _log("ERROR", e);
+      _log("STACKTRACE", stackTrace);
+
+      rethrow;
     }
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // ADD CHECK IN / CHECK OUT
+  // ─────────────────────────────────────────────────────────────
   Future<Map<String, dynamic>> addCheckIn({
     required String logType,
+    required String customKilometer,
     double? latitude,
     double? longitude,
+    String? imageBase64,
+    String? imageFileName,
   }) async {
     final sid = await _token();
     final employeeId = await _employeeId();
@@ -67,42 +74,59 @@ class AttendanceService {
     }
 
     final uri = Uri.parse('$_baseModule.add_employee_checkin');
-    print("Uri: $uri");
 
-    final body = {
-      'log_type': logType,
-      'employee': employeeId,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
+    final headers = {
+      'Authorization': 'token $sid',
+      'Content-Type': 'application/json',
+      'Cookie': 'sid=$sid',
     };
 
-    _log("REQUEST BODY", body);
-    print("Body: ${jsonEncode(body)}");
+    final body = {
+      "employee": employeeId,
+      "log_type": logType,
+      if (latitude != null) "latitude": latitude.toString(),
+      if (longitude != null) "longitude": longitude.toString(),
+      "custom_kilometer": customKilometer,
+      if (imageBase64 != null) "image_b64": imageBase64,
+      if (imageFileName != null) "image_filename": imageFileName,
+    };
+
+    _log("REQUEST URL", uri.toString());
+    _log("REQUEST METHOD", "POST");
+    _log("REQUEST HEADERS", headers);
+    _log("REQUEST BODY", const JsonEncoder.withIndent('  ').convert(body));
 
     try {
       final response = await http.post(
         uri,
-        headers: {
-          'Authorization': 'token $sid',
-          'Content-Type': 'application/json',
-          "Cookie": "sid=$sid", // keep this if backend needs it
-        },
+        headers: headers,
         body: jsonEncode(body),
       );
 
+      _log("STATUS CODE", response.statusCode);
+      _log("RESPONSE HEADERS", response.headers);
       _log("RAW RESPONSE", response.body);
 
-      final data = jsonDecode(response.body);
+      final decoded = jsonDecode(response.body);
+
+      _log(
+        "DECODED RESPONSE",
+        const JsonEncoder.withIndent('  ').convert(decoded),
+      );
 
       if (response.statusCode == 200) {
-        return {'success': true, 'data': data};
-      } else {
-        return {
-          'success': false,
-          'message': data['message'] ?? 'Something went wrong',
-        };
+        return {'success': true, 'data': decoded};
       }
-    } catch (e) {
+
+      return {
+        'success': false,
+        'message': decoded['message'] ?? 'Something went wrong',
+        'data': decoded,
+      };
+    } catch (e, stackTrace) {
+      _log("ERROR", e);
+      _log("STACKTRACE", stackTrace);
+
       return {'success': false, 'message': e.toString()};
     }
   }

@@ -5,7 +5,7 @@
   "packages": [
     {
       "name": "location_tracker_app",
-      "version": "1.0.7+6",
+      "version": "1.0.0+1",
       "dependencies": [
         "another_flushbar",
         "cupertino_icons",

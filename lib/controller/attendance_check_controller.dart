@@ -1,5 +1,8 @@
 // lib/controller/employee_location_controller.dart
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:geolocator/geolocator.dart';
@@ -20,6 +23,16 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
   DateTime? checkInTime;
   DateTime? checkOutTime;
+
+  // KM readings entered by the user at check-in / check-out.
+  String? checkInKm;
+  String? checkOutKm;
+
+  // Local file path of the photo captured/picked at check-in / check-out
+  // (kept only for the current session so the log card can preview it;
+  // not restored from the server).
+  String? checkInPhotoPath;
+  String? checkOutPhotoPath;
 
   int pendingEntriesCount = 0;
   bool get hasPendingEntries => pendingEntriesCount > 0;
@@ -53,37 +66,48 @@ class UpdatedAttendanceController extends ChangeNotifier {
       // Response shape:
       // { "message": { "status": "success", "data": { "current_status": "IN", "last_log_time": "..." } } }
       final rawMsg = data['message'];
-      final Map<String, dynamic> msg =
-          rawMsg is Map<String, dynamic> ? rawMsg : {};
+      final Map<String, dynamic> msg = rawMsg is Map<String, dynamic>
+          ? rawMsg
+          : {};
 
       // The real status lives inside msg['data'], not msg['status']
       final nested = msg['data'];
-      final Map<String, dynamic> innerData =
-          nested is Map<String, dynamic> ? nested : {};
+      final Map<String, dynamic> innerData = nested is Map<String, dynamic>
+          ? nested
+          : {};
 
-      final currentStatus =
-          (innerData['current_status'] as String? ?? 'OUT').toUpperCase();
+      final currentStatus = (innerData['current_status'] as String? ?? 'OUT')
+          .toUpperCase();
       isTracking = currentStatus == 'IN';
 
       final rawLogTime = innerData['last_log_time'] as String?;
       final logTime = rawLogTime != null ? DateTime.tryParse(rawLogTime) : null;
 
+      // If the server reports a KM reading for the last log, reflect it.
+      final serverKm = innerData['custom_kilometer']?.toString();
+
       if (isTracking) {
         // Currently checked in — last_log_time is the check-in time
         checkInTime = logTime;
         checkOutTime = null;
+        checkOutKm = null;
+        checkOutPhotoPath = null;
+        if (serverKm != null) checkInKm = serverKm;
         // Keep local storage in sync
         await _saveCheckInTime(logTime);
       } else {
         // Currently checked out — last_log_time is the check-out time
         checkOutTime = logTime;
+        if (serverKm != null) checkOutKm = serverKm;
         // Restore today's check-in time from local storage (API doesn't return it)
         checkInTime = await _loadTodayCheckInTime();
       }
 
       error = null;
 
-      print('[AttendanceCtrl] isTracking=$isTracking checkIn=$checkInTime checkOut=$checkOutTime');
+      print(
+        '[AttendanceCtrl] isTracking=$isTracking checkIn=$checkInTime checkOut=$checkOutTime',
+      );
     } catch (e) {
       print('[AttendanceCtrl] _fetchStatus error: $e');
       error = _clean(e);
@@ -115,7 +139,8 @@ class UpdatedAttendanceController extends ChangeNotifier {
       }
 
       if (permission == LocationPermission.deniedForever) {
-        error = 'Location permissions are permanently denied. Please enable them in settings.';
+        error =
+            'Location permissions are permanently denied. Please enable them in settings.';
         notifyListeners();
         await Geolocator.openAppSettings();
         return null;
@@ -132,8 +157,30 @@ class UpdatedAttendanceController extends ChangeNotifier {
     }
   }
 
+  /// Reads [photo] off disk and returns its base64 string, or null.
+  Future<String?> _encodePhoto(File? photo) async {
+    if (photo == null) return null;
+    try {
+      final bytes = await photo.readAsBytes();
+      return base64Encode(bytes);
+    } catch (e) {
+      print('[AttendanceCtrl] Error encoding photo: $e');
+      return null;
+    }
+  }
+
+  /// Builds a filename that preserves the original extension (defaults to png).
+  String _photoFileName(File? photo, String prefix) {
+    final ext = photo != null && photo.path.contains('.')
+        ? photo.path.split('.').last
+        : 'png';
+    return '${prefix}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+  }
+
   // ── POST: Check In ──────────────────────────────────────────────────────────
-  Future<void> startTracking() async {
+  /// [km] is the odometer reading entered by the user.
+  /// [photo] is an optional image captured via camera or picked from gallery.
+  Future<void> startTracking({required String km, File? photo}) async {
     if (employeeId.isEmpty) {
       error = 'Employee ID is not set.';
       notifyListeners();
@@ -150,16 +197,29 @@ class UpdatedAttendanceController extends ChangeNotifier {
       lon = position.longitude;
     }
 
+    final imageBase64 = await _encodePhoto(photo);
+    final imageFileName = photo != null
+        ? _photoFileName(photo, 'checkin')
+        : null;
+
     final result = await _service.addCheckIn(
       logType: 'IN',
       latitude: lat,
       longitude: lon,
+      customKilometer: km,
+      imageBase64: imageBase64,
+      imageFileName: imageFileName,
     );
 
     if (result['success'] == true) {
       isTracking = true;
       checkInTime = DateTime.now();
       checkOutTime = null;
+      // Fresh day / fresh session — clear out any previous check-out info.
+      checkInKm = km;
+      checkInPhotoPath = photo?.path;
+      checkOutKm = null;
+      checkOutPhotoPath = null;
       error = null;
       // Persist check-in time so it survives a restart
       await _saveCheckInTime(checkInTime);
@@ -171,7 +231,9 @@ class UpdatedAttendanceController extends ChangeNotifier {
   }
 
   // ── POST: Check Out ─────────────────────────────────────────────────────────
-  Future<void> stopTracking() async {
+  /// [km] is the odometer reading entered by the user.
+  /// [photo] is an optional image captured via camera or picked from gallery.
+  Future<void> stopTracking({required String km, File? photo}) async {
     if (employeeId.isEmpty) {
       error = 'Employee ID is not set.';
       notifyListeners();
@@ -182,21 +244,32 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
     double? lat;
     double? lon;
+
     final position = await _getCurrentPosition();
     if (position != null) {
       lat = position.latitude;
       lon = position.longitude;
     }
 
+    final imageBase64 = await _encodePhoto(photo);
+    final imageFileName = photo != null
+        ? _photoFileName(photo, 'checkout')
+        : null;
+
     final result = await _service.addCheckIn(
       logType: 'OUT',
       latitude: lat,
       longitude: lon,
+      customKilometer: km,
+      imageBase64: imageBase64,
+      imageFileName: imageFileName,
     );
 
     if (result['success'] == true) {
       isTracking = false;
       checkOutTime = DateTime.now();
+      checkOutKm = km;
+      checkOutPhotoPath = photo?.path;
       error = null;
     } else {
       error = result['message'] as String? ?? 'Check-out failed.';

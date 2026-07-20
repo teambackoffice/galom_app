@@ -53,6 +53,7 @@ class LogCustomerVisitService {
       final response = await request.send();
 
       final responseBody = await response.stream.bytesToString();
+      print(body);
 
       if (response.statusCode == 200) {
         final decoded = json.decode(responseBody);
@@ -63,6 +64,7 @@ class LogCustomerVisitService {
         );
       }
     } catch (e, stack) {
+      print("Eroor $e");
       throw Exception("Error logging customer visit: $e");
     }
   }

@@ -1,12 +1,29 @@
 // lib/view/mainscreen/location_track/location_tracking_page.dart
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:location_tracker_app/controller/attendance_check_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_log.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_timer.dart';
 
 // Employee ID is read from secure storage by AttendanceService directly.
+//
+// NOTE ON CONTROLLER CHANGES NEEDED:
+// This page now collects a KM reading and an optional photo before
+// checking in / out. For this to actually persist, update
+// UpdatedAttendanceController so that:
+//   - startTracking({ required String km, File? photo })
+//   - stopTracking({ required String km, File? photo })
+// accept these values (send them to your API / store them locally),
+// and optionally expose read-back fields such as:
+//   - String? checkInKm, checkOutKm
+//   - String? checkInPhotoPath, checkOutPhotoPath
+// so they can be displayed in "Today's Log" below (already wired up,
+// guarded with null-checks, so nothing breaks if you haven't added
+// them yet).
 
 class LocationTrackingPage extends StatefulWidget {
   const LocationTrackingPage({super.key});
@@ -103,60 +120,22 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
     return '${wd[n.weekday - 1]}, ${mo[n.month - 1]} ${n.day}';
   }
 
-  // ── Confirm Dialog ───────────────────────────────────────────────────────────
-  void _confirm({
-    required String title,
-    required String message,
-    required String label,
-    required Color color,
-    required VoidCallback onConfirm,
-  }) {
+  // ── Check-in / Check-out dialog (KM + Photo) ─────────────────────────────────
+  void _showCheckActionDialog({required bool isCheckIn}) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF0D1B3E),
-          ),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(fontSize: 14, color: Color(0xFF636E72)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(color: Color(0xFF636E72)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              onConfirm();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: color,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => _CheckActionDialog(
+        isCheckIn: isCheckIn,
+        onConfirm: (km, photo) {
+          Navigator.pop(ctx);
+          final ctrl = context.read<UpdatedAttendanceController>();
+          if (isCheckIn) {
+            ctrl.startTracking(km: km, photo: photo);
+          } else {
+            ctrl.stopTracking(km: km, photo: photo);
+          }
+        },
       ),
     );
   }
@@ -509,25 +488,7 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
                     onPressed: ctrl.isLoading
                         ? null
                         : () {
-                            if (isIn) {
-                              _confirm(
-                                title: 'Check Out?',
-                                message:
-                                    'Are you sure you want to check out now?',
-                                label: 'Yes, Check Out',
-                                color: const Color(0xFFB71C1C),
-                                onConfirm: ctrl.stopTracking,
-                              );
-                            } else {
-                              _confirm(
-                                title: 'Check In?',
-                                message:
-                                    'Are you sure you want to check in now?',
-                                label: 'Yes, Check In',
-                                color: const Color(0xFF00875A),
-                                onConfirm: ctrl.startTracking,
-                              );
-                            }
+                            _showCheckActionDialog(isCheckIn: !isIn);
                           },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isIn
@@ -587,6 +548,9 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
 
   // ── Today's Log Card ─────────────────────────────────────────────────────────
   Widget _buildLogCard(UpdatedAttendanceController ctrl) {
+    final checkInKm = ctrl.checkInKm;
+    final checkOutKm = ctrl.checkOutKm;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -640,12 +604,28 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
                 label: 'Checked in',
                 value: _formatTime(ctrl.checkInTime),
               ),
+            if (checkInKm != null && checkInKm.isNotEmpty) ...[
+              const _LogDivider(),
+              _LogRow(
+                dot: const Color(0xFF00875A),
+                label: 'Check-in KM',
+                value: '$checkInKm km',
+              ),
+            ],
             if (ctrl.checkOutTime != null) ...[
-              if (ctrl.checkInTime != null) const _LogDivider(),
+              const _LogDivider(),
               _LogRow(
                 dot: const Color(0xFFB71C1C),
                 label: 'Checked out',
                 value: _formatTime(ctrl.checkOutTime),
+              ),
+            ],
+            if (checkOutKm != null && checkOutKm.isNotEmpty) ...[
+              const _LogDivider(),
+              _LogRow(
+                dot: const Color(0xFFB71C1C),
+                label: 'Check-out KM',
+                value: '$checkOutKm km',
               ),
             ],
             if (ctrl.checkInTime != null && ctrl.checkOutTime != null) ...[
@@ -725,6 +705,292 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
           _ShimmerBox(width: double.infinity, height: 140, radius: 24),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Check-in / Check-out dialog: KM entry + camera/gallery photo
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CheckActionDialog extends StatefulWidget {
+  final bool isCheckIn;
+  final void Function(String km, File? photo) onConfirm;
+
+  const _CheckActionDialog({required this.isCheckIn, required this.onConfirm});
+
+  @override
+  State<_CheckActionDialog> createState() => _CheckActionDialogState();
+}
+
+class _CheckActionDialogState extends State<_CheckActionDialog> {
+  final TextEditingController _kmController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  File? _photo;
+  String? _kmError;
+  String? _generalError;
+  bool _isPicking = false;
+
+  Color get _accentColor =>
+      widget.isCheckIn ? const Color(0xFF00875A) : const Color(0xFFB71C1C);
+
+  @override
+  void dispose() {
+    _kmController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    setState(() => _isPicking = true);
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: source,
+        imageQuality: 80,
+        maxWidth: 1600,
+      );
+      if (picked != null) {
+        setState(() {
+          _photo = File(picked.path);
+          _generalError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not get photo: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isPicking = false);
+    }
+  }
+
+  void _handleConfirm() {
+    final km = _kmController.text.trim();
+    final hasKm = km.isNotEmpty;
+    final hasPhoto = _photo != null;
+
+    setState(() {
+      _kmError = null;
+      _generalError = null;
+    });
+
+    // If they typed something in KM, it has to be a valid number.
+    if (hasKm && double.tryParse(km) == null) {
+      setState(() => _kmError = 'Enter a valid number');
+      return;
+    }
+
+    // At least one of KM or photo is required — not both.
+    if (!hasKm && !hasPhoto) {
+      setState(() => _generalError = 'Enter your KM reading or add a photo');
+      return;
+    }
+
+    widget.onConfirm(km, _photo);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Text(
+        widget.isCheckIn ? 'Check In' : 'Check Out',
+        style: const TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF0D1B3E),
+        ),
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.isCheckIn
+                  ? 'Enter your odometer KM or add a photo to check in.'
+                  : 'Enter your odometer KM or add a photo to check out.',
+              style: const TextStyle(fontSize: 13, color: Color(0xFF636E72)),
+            ),
+            const SizedBox(height: 16),
+
+            // ── KM text field ─────────────────────────────────────
+            TextField(
+              controller: _kmController,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              onChanged: (_) {
+                if (_kmError != null || _generalError != null) {
+                  setState(() {
+                    _kmError = null;
+                    _generalError = null;
+                  });
+                }
+              },
+              decoration: InputDecoration(
+                labelText: 'KM Reading',
+                hintText: 'e.g. 12345.6',
+                prefixIcon: const Icon(Icons.speed_rounded, size: 20),
+                errorText: _kmError,
+                filled: true,
+                fillColor: const Color(0xFFF0F2F8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: _accentColor, width: 1.5),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Photo picker buttons ──────────────────────────────
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isPicking
+                        ? null
+                        : () => _pickImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                    label: const Text('Camera'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0D1B3E),
+                      side: const BorderSide(color: Color(0xFFE0E4EF)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _isPicking
+                        ? null
+                        : () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: const Text('Gallery'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF0D1B3E),
+                      side: const BorderSide(color: Color(0xFFE0E4EF)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Photo preview ─────────────────────────────────────
+            if (_isPicking) ...[
+              const SizedBox(height: 16),
+              const Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+              ),
+            ] else if (_photo != null) ...[
+              const SizedBox(height: 14),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.file(
+                      _photo!,
+                      width: double.maxFinite,
+                      height: 150,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () => setState(() {
+                        _photo = null;
+                      }),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
+            if (_generalError != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    size: 16,
+                    color: Color(0xFFB71C1C),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _generalError!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFB71C1C),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: Color(0xFF636E72)),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _handleConfirm,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _accentColor,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Text(
+            widget.isCheckIn ? 'Yes, Check In' : 'Yes, Check Out',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
