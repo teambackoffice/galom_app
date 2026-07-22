@@ -66,10 +66,10 @@ class SalesOrder {
     name: json["name"],
     customer: json["customer"],
     deliveryDate: DateTime.parse(json["delivery_date"]),
-    totalAmount: json["total"],
-    totalTaxAmount: json["total_taxes_and_charges"],
-    grandTotal: json["grand_total"],
-    roundedTotal: json["rounded total"],
+    totalAmount: (json["total"] as num?)?.toDouble() ?? 0.0,
+    totalTaxAmount: (json["total_taxes_and_charges"] as num?)?.toDouble() ?? 0.0,
+    grandTotal: (json["grand_total"] as num?)?.toDouble() ?? 0.0,
+    roundedTotal: (json["rounded_total"] as num?)?.toDouble() ?? 0.0,
     items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
   );
 
@@ -81,7 +81,7 @@ class SalesOrder {
     "Total": totalAmount,
     "total_tax_amount": totalTaxAmount,
     "grand_total": grandTotal,
-    "rounded total": roundedTotal,
+    "rounded_total": roundedTotal,
     "items": List<dynamic>.from(items.map((x) => x.toJson())),
   };
 }
@@ -101,9 +101,9 @@ class Item {
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
     itemCode: json["item_code"],
-    qty: json["qty"],
-    rate: json["rate"],
-    amount: json["amount"],
+    qty: (json["qty"] as num?)?.toDouble() ?? 0.0,
+    rate: (json["rate"] as num?)?.toDouble() ?? 0.0,
+    amount: (json["amount"] as num?)?.toDouble() ?? 0.0,
   );
 
   Map<String, dynamic> toJson() => {

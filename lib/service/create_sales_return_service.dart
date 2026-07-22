@@ -41,23 +41,70 @@ class CreateSalesReturnService {
 
     final Map<String, dynamic> body = {"sales_person": salesPerson ?? id};
 
-    if (returnAgainst?.isNotEmpty ?? false)
+    if (returnAgainst?.isNotEmpty ?? false) {
       body["return_against"] = returnAgainst;
-    if (returnDate?.isNotEmpty ?? false) body["return_date"] = returnDate;
-    if (customer?.isNotEmpty ?? false) body["customer"] = customer;
-    if (reason?.isNotEmpty ?? false) body["reason"] = reason;
-    if (return_reason?.isNotEmpty ?? false)
+    }
+
+    if (returnDate?.isNotEmpty ?? false) {
+      body["return_date"] = returnDate;
+    }
+
+    if (customer?.isNotEmpty ?? false) {
+      body["customer"] = customer;
+    }
+
+    if (reason?.isNotEmpty ?? false) {
+      body["reason"] = reason;
+    }
+
+    if (return_reason?.isNotEmpty ?? false) {
       body["return_reason"] = return_reason;
-    if (items != null && items.isNotEmpty) body["items"] = items;
+    }
+
+    if (items != null && items.isNotEmpty) {
+      body["items"] = items;
+    }
 
     final uri = Uri.parse(url);
 
-    final response = await http.post(
-      uri,
-      headers: headers,
-      body: json.encode(body),
-    );
+    try {
+      print("========== CREATE SALES RETURN ==========");
+      print("URL: $uri");
+      print("SID: $sid");
+      print("Headers: $headers");
+      print("Request Body:");
+      print(const JsonEncoder.withIndent('  ').convert(body));
 
-    return response;
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print("========== API RESPONSE ==========");
+      print("Status Code: ${response.statusCode}");
+      print("Reason Phrase: ${response.reasonPhrase}");
+      print("Response Headers: ${response.headers}");
+      print("Response Body: ${response.body}");
+      print("==================================");
+
+      // Print HTTP errors (4xx/5xx)
+      if (response.statusCode >= 400) {
+        print("❌ HTTP ERROR");
+        print("Status Code: ${response.statusCode}");
+        print("Response: ${response.body}");
+      }
+
+      return response;
+    } catch (e, stackTrace) {
+      print("========== EXCEPTION ==========");
+      print("Error: $e");
+      print("Type: ${e.runtimeType}");
+      print("StackTrace:");
+      print(stackTrace);
+      print("================================");
+
+      rethrow;
+    }
   }
 }

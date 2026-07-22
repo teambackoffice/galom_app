@@ -16,7 +16,6 @@ class GetLeaveApplicationService {
       final sid = await _secureStorage.read(key: 'sid');
 
       if (sid == null || sid.isEmpty) {
-        developer.log('❌ SID token not found in secure storage');
         throw Exception('SID token not found in secure storage');
       }
 
@@ -26,30 +25,70 @@ class GetLeaveApplicationService {
         'Cookie': 'sid=$sid',
       };
 
-      developer.log('Request Headers: ${jsonEncode(headers)}');
+      final uri = Uri.parse(url);
 
-      final response = await http.get(Uri.parse(url), headers: headers);
+      // ================= REQUEST =================
+      developer.log("========== GET LEAVE APPLICATIONS ==========");
+      developer.log("URL: $uri");
+      developer.log("SID: $sid");
+      developer.log("Headers:");
+      developer.log(const JsonEncoder.withIndent('  ').convert(headers));
+      developer.log("============================================");
+      // ===========================================
 
-      developer.log('Status Code: ${response.statusCode}');
-      developer.log('Response Headers: ${jsonEncode(response.headers)}');
-      developer.log('Raw Response Body: ${response.body}');
+      final response = await http.get(uri, headers: headers);
+
+      // ================= RESPONSE =================
+      developer.log("========== API RESPONSE ==========");
+      developer.log("Status Code: ${response.statusCode}");
+      developer.log("Reason Phrase: ${response.reasonPhrase}");
+      developer.log("Response Headers:");
+      developer.log(
+        const JsonEncoder.withIndent('  ').convert(response.headers),
+      );
+      developer.log("Response Body:");
+      developer.log(response.body);
+      developer.log("==================================");
+      // ============================================
 
       if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+        try {
+          final jsonData = jsonDecode(response.body);
 
-        developer.log(
-          'Formatted Response:\n${const JsonEncoder.withIndent('  ').convert(jsonData)}',
-        );
+          developer.log("========== PARSED JSON ==========");
+          developer.log(const JsonEncoder.withIndent('  ').convert(jsonData));
+          developer.log("=================================");
 
-        return LeaveApplicationModalClass.fromJson(jsonData);
+          return LeaveApplicationModalClass.fromJson(jsonData);
+        } catch (e, stackTrace) {
+          developer.log("========== JSON PARSE ERROR ==========");
+          developer.log("Error: $e");
+          developer.log("StackTrace:\n$stackTrace");
+          developer.log("======================================");
+
+          return null;
+        }
       } else {
+        developer.log("========== HTTP ERROR ==========");
+        developer.log("Status Code: ${response.statusCode}");
+        developer.log("Reason Phrase: ${response.reasonPhrase}");
+        developer.log("Response Headers:");
         developer.log(
-          '❌ API Failed\nStatus Code: ${response.statusCode}\nResponse: ${response.body}',
+          const JsonEncoder.withIndent('  ').convert(response.headers),
         );
+        developer.log("Response Body:");
+        developer.log(response.body);
+        developer.log("================================");
+
         return null;
       }
     } catch (e, stackTrace) {
-      developer.log('❌ Exception: $e', stackTrace: stackTrace);
+      developer.log("========== EXCEPTION ==========");
+      developer.log("Error: $e");
+      developer.log("Type: ${e.runtimeType}");
+      developer.log("StackTrace:\n$stackTrace");
+      developer.log("================================");
+
       return null;
     }
   }
