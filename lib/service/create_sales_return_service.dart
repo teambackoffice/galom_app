@@ -68,42 +68,17 @@ class CreateSalesReturnService {
     final uri = Uri.parse(url);
 
     try {
-      print("========== CREATE SALES RETURN ==========");
-      print("URL: $uri");
-      print("SID: $sid");
-      print("Headers: $headers");
-      print("Request Body:");
-      print(const JsonEncoder.withIndent('  ').convert(body));
-
       final response = await http.post(
         uri,
         headers: headers,
         body: jsonEncode(body),
       );
 
-      print("========== API RESPONSE ==========");
-      print("Status Code: ${response.statusCode}");
-      print("Reason Phrase: ${response.reasonPhrase}");
-      print("Response Headers: ${response.headers}");
-      print("Response Body: ${response.body}");
-      print("==================================");
-
       // Print HTTP errors (4xx/5xx)
-      if (response.statusCode >= 400) {
-        print("❌ HTTP ERROR");
-        print("Status Code: ${response.statusCode}");
-        print("Response: ${response.body}");
-      }
+      if (response.statusCode >= 400) {}
 
       return response;
     } catch (e, stackTrace) {
-      print("========== EXCEPTION ==========");
-      print("Error: $e");
-      print("Type: ${e.runtimeType}");
-      print("StackTrace:");
-      print(stackTrace);
-      print("================================");
-
       rethrow;
     }
   }

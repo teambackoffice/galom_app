@@ -12,32 +12,77 @@ class ModeOfPayService {
   Future<ModeOfPaymentModal?> getmodeofpay() async {
     try {
       final String? sid = await _secureStorage.read(key: 'sid');
-      if (sid == null)
-        throw Exception('Authentication required. Please login again.');
 
-      // Log the request details
+      if (sid == null) {
+        throw Exception('Authentication required. Please login again.');
+      }
+
+      final uri = Uri.parse(url);
+
+      // ================= REQUEST =================
+      print("========== GET MODE OF PAYMENT ==========");
+      print("URL: $uri");
+      print("SID: $sid");
+      print("Headers:");
+      print({'Content-Type': 'application/json', 'Cookie': 'sid=$sid'});
+      print("=========================================");
+      // ===========================================
 
       final response = await http.get(
-        Uri.parse(url),
+        uri,
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
 
-      // Log the response details
+      // ================= RESPONSE =================
+      print("========== API RESPONSE ==========");
+      print("Status Code: ${response.statusCode}");
+      print("Reason Phrase: ${response.reasonPhrase}");
+      print("Response Headers:");
+      print(response.headers);
+      print("Response Body:");
+      print(response.body);
+      print("==================================");
+      // ============================================
 
       if (response.statusCode == 200) {
         try {
           final decoded = jsonDecode(response.body);
+
+          print("========== PARSED JSON ==========");
+          print(const JsonEncoder.withIndent('  ').convert(decoded));
+          print("=================================");
+
           return modeOfPaymentModalFromJson(response.body);
-        } catch (e) {
+        } catch (e, stackTrace) {
+          print("========== JSON PARSE ERROR ==========");
+          print("Error: $e");
+          print("StackTrace:");
+          print(stackTrace);
+          print("======================================");
+
           throw Exception('Failed to parse response: $e');
         }
       } else {
+        print("========== HTTP ERROR ==========");
+        print("Status Code: ${response.statusCode}");
+        print("Reason Phrase: ${response.reasonPhrase}");
+        print("Response Body:");
+        print(response.body);
+        print("================================");
+
         throw Exception(
-          'Failed to load mode of payment. Code: ${response.statusCode}',
+          'Failed to load mode of payment. Code: ${response.statusCode}\nResponse: ${response.body}',
         );
       }
-    } catch (e) {
-      throw Exception('Network error: $e');
+    } catch (e, stackTrace) {
+      print("========== EXCEPTION ==========");
+      print("Error: $e");
+      print("Type: ${e.runtimeType}");
+      print("StackTrace:");
+      print(stackTrace);
+      print("================================");
+
+      rethrow;
     }
   }
 }

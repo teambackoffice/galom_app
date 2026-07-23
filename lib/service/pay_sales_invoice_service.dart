@@ -24,7 +24,10 @@ class PaySalesInvoiceService {
         throw Exception('Session ID not found. Please log in again.');
       }
 
-      var headers = {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'};
+      final headers = {
+        'Content-Type': 'application/json',
+        'Cookie': 'sid=$sid',
+      };
 
       final Map<String, dynamic> bodyMap = {
         "invoice_name": invoice_id,
@@ -37,11 +40,25 @@ class PaySalesInvoiceService {
       }
 
       if (referenceDate != null) {
-        final formattedDate = DateFormat('yyyy-MM-dd').format(referenceDate);
-        bodyMap["reference_date"] = formattedDate;
+        bodyMap["reference_date"] = DateFormat(
+          'yyyy-MM-dd',
+        ).format(referenceDate);
       }
 
       final body = json.encode(bodyMap);
+
+      // ================= REQUEST =================
+      debugPrint("========== PAY SALES INVOICE ==========");
+      debugPrint("URL: $url");
+      debugPrint("Method: POST");
+      debugPrint("SID: $sid");
+      debugPrint("Headers:");
+      debugPrint(headers.toString());
+
+      const encoder = JsonEncoder.withIndent('  ');
+      debugPrint("Request Body:");
+      debugPrint(encoder.convert(bodyMap));
+      debugPrint("=======================================");
 
       final response = await http.post(
         Uri.parse(url),
@@ -49,11 +66,34 @@ class PaySalesInvoiceService {
         body: body,
       );
 
-      if (response.statusCode == 200) {
-        final decodedResponse = json.decode(response.body);
+      // ================= RESPONSE =================
+      debugPrint("========== API RESPONSE ==========");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Reason Phrase: ${response.reasonPhrase}");
+      debugPrint("Response Headers:");
+      debugPrint(response.headers.toString());
 
-        return decodedResponse;
+      debugPrint("Response Body:");
+
+      try {
+        final decoded = json.decode(response.body);
+        debugPrint(encoder.convert(decoded));
+      } catch (_) {
+        debugPrint(response.body);
+      }
+
+      debugPrint("==================================");
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
       } else {
+        debugPrint("========== HTTP ERROR ==========");
+        debugPrint("Status Code: ${response.statusCode}");
+        debugPrint("Reason Phrase: ${response.reasonPhrase}");
+        debugPrint("Response Body:");
+        debugPrint(response.body);
+        debugPrint("================================");
+
         throw Exception(
           'Failed to pay sales invoice.\n'
           'Status Code: ${response.statusCode}\n'
@@ -61,6 +101,13 @@ class PaySalesInvoiceService {
         );
       }
     } catch (e, stackTrace) {
+      debugPrint("========== EXCEPTION ==========");
+      debugPrint("Error: $e");
+      debugPrint("Type: ${e.runtimeType}");
+      debugPrint("StackTrace:");
+      debugPrint(stackTrace.toString());
+      debugPrint("===============================");
+
       rethrow;
     }
   }

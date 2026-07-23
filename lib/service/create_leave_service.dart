@@ -8,7 +8,7 @@ class CreateLeaveApplicationService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   final String url =
-      'https://uat-mettaapp.tbo365.cloud/api/method/galom.galom.leave_api.create_leave_application';
+      'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.create_leave_application';
 
   Future<Map<String, dynamic>?> createLeaveApplication({
     required String employee,

@@ -13,7 +13,7 @@ class GetAdminLeaveApplicationService {
       final sid = await _storage.read(key: 'sid');
 
       final url = Uri.parse(
-        'https://uat-mettaapp.tbo365.cloud/api/method/galom.galom.leave_api.get_leave_application',
+        'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.get_leave_application',
       );
 
       final headers = {'Authorization': 'token $sid', 'Cookie': 'sid=$sid'};

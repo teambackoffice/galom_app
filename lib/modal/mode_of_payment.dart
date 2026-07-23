@@ -33,8 +33,26 @@ class Message {
 
   Message({required this.name, required this.execute});
 
-  factory Message.fromJson(Map<String, dynamic> json) =>
-      Message(name: json["name"], execute: json["execute"]);
+  factory Message.fromJson(Map<String, dynamic> json) {
+    bool exec = false;
+    if (json["execute"] != null) {
+      if (json["execute"] is bool) {
+        exec = json["execute"];
+      } else if (json["execute"] is int) {
+        exec = json["execute"] == 1;
+      }
+    } else if (json["enabled"] != null) {
+      if (json["enabled"] is bool) {
+        exec = json["enabled"];
+      } else if (json["enabled"] is int) {
+        exec = json["enabled"] == 1;
+      }
+    }
+    return Message(
+      name: json["name"] ?? "",
+      execute: exec,
+    );
+  }
 
   Map<String, dynamic> toJson() => {"name": name, "execute": execute};
 }

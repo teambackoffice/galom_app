@@ -32,6 +32,7 @@ class CreatePaymentEntryService {
       if (sid == null || sid.isEmpty) {
         throw Exception("SID not found in storage");
       }
+
       if (salesPerson == null || salesPerson.isEmpty) {
         throw Exception("Sales person not found in storage");
       }
@@ -41,7 +42,7 @@ class CreatePaymentEntryService {
         'Cookie': 'sid=$sid',
       };
 
-      Map<String, dynamic> requestBody = {
+      final Map<String, dynamic> requestBody = {
         "customer": customer,
         "total_allocated_amount": totalAllocatedAmount,
         "sales_person": salesPerson,
@@ -59,8 +60,19 @@ class CreatePaymentEntryService {
 
       final body = jsonEncode(requestBody);
 
-      // Pretty print request body
-      if (kDebugMode) {}
+      // ================= REQUEST =================
+      debugPrint("========== CREATE PAYMENT ENTRY ==========");
+      debugPrint("URL: $url");
+      debugPrint("Method: POST");
+      debugPrint("SID: $sid");
+      debugPrint("Sales Person: $salesPerson");
+      debugPrint("Headers:");
+      debugPrint(headers.toString());
+
+      const encoder = JsonEncoder.withIndent('  ');
+      debugPrint("Request Body:");
+      debugPrint(encoder.convert(requestBody));
+      debugPrint("=========================================");
 
       final response = await http.post(
         Uri.parse(url),
@@ -68,15 +80,33 @@ class CreatePaymentEntryService {
         body: body,
       );
 
-      // Pretty print response JSON (if valid)
-      if (kDebugMode) {
-        try {
-          final decoded = jsonDecode(response.body);
-        } catch (_) {}
+      // ================= RESPONSE =================
+      debugPrint("========== API RESPONSE ==========");
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Reason: ${response.reasonPhrase}");
+      debugPrint("Headers:");
+      debugPrint(response.headers.toString());
+
+      debugPrint("Response Body:");
+
+      try {
+        final decoded = jsonDecode(response.body);
+        debugPrint(encoder.convert(decoded));
+      } catch (_) {
+        debugPrint(response.body);
       }
+
+      debugPrint("==================================");
 
       return response;
     } catch (e, stackTrace) {
+      debugPrint("========== EXCEPTION ==========");
+      debugPrint("Error: $e");
+      debugPrint("Type: ${e.runtimeType}");
+      debugPrint("StackTrace:");
+      debugPrint(stackTrace.toString());
+      debugPrint("===============================");
+
       rethrow;
     }
   }
