@@ -851,44 +851,23 @@ class _CheckActionDialogState extends State<_CheckActionDialog> {
             const SizedBox(height: 16),
 
             // ── Photo picker buttons ──────────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isPicking
-                        ? null
-                        : () => _pickImage(ImageSource.camera),
-                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                    label: const Text('Camera'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0D1B3E),
-                      side: const BorderSide(color: Color(0xFFE0E4EF)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isPicking
+                    ? null
+                    : () => _pickImage(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                label: const Text('Camera'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF0D1B3E),
+                  side: const BorderSide(color: Color(0xFFE0E4EF)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isPicking
-                        ? null
-                        : () => _pickImage(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined, size: 18),
-                    label: const Text('Gallery'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF0D1B3E),
-                      side: const BorderSide(color: Color(0xFFE0E4EF)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
 
             // ── Photo preview ─────────────────────────────────────

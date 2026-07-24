@@ -22,41 +22,16 @@ class LeaveApprovalRejectService {
         'Accept': 'application/json',
       };
 
-      print("\n================ APPROVE REQUEST ================");
-      print("URL : $url");
-      print("Doc Name : $docName");
-      print("SID : $sid");
-
-      print("\nRequest Headers:");
-      headers.forEach((key, value) {
-        print("$key : $value");
-      });
+      headers.forEach((key, value) {});
 
       final response = await http.post(url, headers: headers);
 
-      print("\nStatus Code : ${response.statusCode}");
-
-      print("\nResponse Headers:");
-      response.headers.forEach((key, value) {
-        print("$key : $value");
-      });
-
-      print("\nRaw Response:");
-      print(response.body);
+      response.headers.forEach((key, value) {});
 
       final decoded = jsonDecode(response.body);
 
-      print("\nDecoded Response:");
-      print(const JsonEncoder.withIndent('  ').convert(decoded));
-
-      print("=================================================\n");
-
       return decoded;
     } catch (e, stackTrace) {
-      print("=============== APPROVE ERROR =================");
-      print(e);
-      print(stackTrace);
-
       return {"status": "error", "message": e.toString()};
     }
   }
@@ -75,41 +50,16 @@ class LeaveApprovalRejectService {
         'Accept': 'application/json',
       };
 
-      print("\n================ REJECT REQUEST ================");
-      print("URL : $url");
-      print("Doc Name : $docName");
-      print("SID : $sid");
-
-      print("\nRequest Headers:");
-      headers.forEach((key, value) {
-        print("$key : $value");
-      });
+      headers.forEach((key, value) {});
 
       final response = await http.post(url, headers: headers);
 
-      print("\nStatus Code : ${response.statusCode}");
-
-      print("\nResponse Headers:");
-      response.headers.forEach((key, value) {
-        print("$key : $value");
-      });
-
-      print("\nRaw Response:");
-      print(response.body);
+      response.headers.forEach((key, value) {});
 
       final decoded = jsonDecode(response.body);
 
-      print("\nDecoded Response:");
-      print(const JsonEncoder.withIndent('  ').convert(decoded));
-
-      print("=================================================\n");
-
       return decoded;
     } catch (e, stackTrace) {
-      print("=============== REJECT ERROR =================");
-      print(e);
-      print(stackTrace);
-
       return {"status": "error", "message": e.toString()};
     }
   }

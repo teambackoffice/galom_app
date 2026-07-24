@@ -60,19 +60,7 @@ class CreatePaymentEntryService {
 
       final body = jsonEncode(requestBody);
 
-      // ================= REQUEST =================
-      debugPrint("========== CREATE PAYMENT ENTRY ==========");
-      debugPrint("URL: $url");
-      debugPrint("Method: POST");
-      debugPrint("SID: $sid");
-      debugPrint("Sales Person: $salesPerson");
-      debugPrint("Headers:");
-      debugPrint(headers.toString());
-
       const encoder = JsonEncoder.withIndent('  ');
-      debugPrint("Request Body:");
-      debugPrint(encoder.convert(requestBody));
-      debugPrint("=========================================");
 
       final response = await http.post(
         Uri.parse(url),
@@ -80,33 +68,12 @@ class CreatePaymentEntryService {
         body: body,
       );
 
-      // ================= RESPONSE =================
-      debugPrint("========== API RESPONSE ==========");
-      debugPrint("Status Code: ${response.statusCode}");
-      debugPrint("Reason: ${response.reasonPhrase}");
-      debugPrint("Headers:");
-      debugPrint(response.headers.toString());
-
-      debugPrint("Response Body:");
-
       try {
         final decoded = jsonDecode(response.body);
-        debugPrint(encoder.convert(decoded));
-      } catch (_) {
-        debugPrint(response.body);
-      }
-
-      debugPrint("==================================");
+      } catch (_) {}
 
       return response;
     } catch (e, stackTrace) {
-      debugPrint("========== EXCEPTION ==========");
-      debugPrint("Error: $e");
-      debugPrint("Type: ${e.runtimeType}");
-      debugPrint("StackTrace:");
-      debugPrint(stackTrace.toString());
-      debugPrint("===============================");
-
       rethrow;
     }
   }

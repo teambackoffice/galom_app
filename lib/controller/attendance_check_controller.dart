@@ -61,7 +61,6 @@ class UpdatedAttendanceController extends ChangeNotifier {
       final data = await _service.getEmployeeStatus();
 
       // ── Debug: log full API response ──
-      print('[AttendanceCtrl] raw API response: $data');
 
       // Response shape:
       // { "message": { "status": "success", "data": { "current_status": "IN", "last_log_time": "..." } } }
