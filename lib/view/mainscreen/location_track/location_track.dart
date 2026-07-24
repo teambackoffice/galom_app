@@ -279,19 +279,19 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
             ],
           ),
         ),
-        PopupMenuItem(
-          value: 'customer_timer',
-          child: Row(
-            children: [
-              Icon(Icons.timer_rounded, size: 18, color: Color(0xFF1E88E5)),
-              SizedBox(width: 10),
-              Text(
-                'Customer Visit Timer',
-                style: TextStyle(fontSize: 14, color: Color(0xFF0D1B3E)),
-              ),
-            ],
-          ),
-        ),
+        // PopupMenuItem(
+        //   value: 'customer_timer',
+        //   child: Row(
+        //     children: [
+        //       Icon(Icons.timer_rounded, size: 18, color: Color(0xFF1E88E5)),
+        //       SizedBox(width: 10),
+        //       Text(
+        //         'Customer Visit Timer',
+        //         style: TextStyle(fontSize: 14, color: Color(0xFF0D1B3E)),
+        //       ),
+        //     ],
+        //   ),
+        // ),
       ],
       onSelected: (v) {
         if (v == 'visit_log') {

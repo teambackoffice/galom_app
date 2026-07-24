@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/employee_location_controller.dart';
+import 'package:location_tracker_app/modal/customer_list_modal.dart';
 import 'package:provider/provider.dart';
 
 class CustomerVisitTimerPage extends StatefulWidget {
@@ -27,6 +30,9 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
   void initState() {
     super.initState();
     _loadActiveVisit();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<GetCustomerListController>(context, listen: false).fetchCustomerList();
+    });
   }
 
   void _loadActiveVisit() {
@@ -176,87 +182,191 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          contentPadding: EdgeInsets.all(24),
-          title: Column(
-            children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+        return Consumer<GetCustomerListController>(
+          builder: (context, customerListController, child) {
+            final allCustomers = customerListController.customerlist?.message.message ?? [];
+            final isLoading = customerListController.isLoading;
+
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                final query = _customerController.text.toLowerCase().trim();
+                final filteredCustomers = allCustomers.where((customer) {
+                  final nameMatch = customer.customerName.toLowerCase().contains(query);
+                  final mobileMatch = customer.mobileNo?.contains(query) ?? false;
+                  final emailMatch = customer.emailId?.toLowerCase().contains(query) ?? false;
+                  return nameMatch || mobileMatch || emailMatch;
+                }).toList();
+
+                // Show dropdown when the text field has content or the list is loaded and not empty
+                final showDropdown = _customerController.text.isNotEmpty && allCustomers.isNotEmpty;
+
+                return AlertDialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.person_add, color: Colors.white, size: 32),
-              ),
-              SizedBox(height: 16),
-              Text(
-                'Check In to Customer',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _customerController,
-                decoration: InputDecoration(
-                  labelText: 'Customer Name',
-                  hintText: 'Enter customer name',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  contentPadding: EdgeInsets.all(24),
+                  title: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.person_add, color: Colors.white, size: 32),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Check In to Customer',
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
-                  prefixIcon: Icon(Icons.person_outline),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-                textCapitalization: TextCapitalization.words,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: _purposeController,
-                decoration: InputDecoration(
-                  labelText: 'Purpose (Optional)',
-                  hintText: 'Visit purpose',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  content: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: _customerController,
+                              onChanged: (val) {
+                                setModalState(() {});
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Customer Name',
+                                hintText: 'Enter customer name',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                prefixIcon: Icon(Icons.person_outline),
+                                suffixIcon: isLoading
+                                    ? SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : _customerController.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: Icon(Icons.clear, size: 18),
+                                            onPressed: () {
+                                              _customerController.clear();
+                                              setModalState(() {});
+                                            },
+                                          )
+                                        : null,
+                                filled: true,
+                                fillColor: Colors.grey.shade50,
+                              ),
+                              textCapitalization: TextCapitalization.words,
+                            ),
+                            if (isLoading) ...[
+                              SizedBox(height: 8),
+                              Center(
+                                child: Text(
+                                  'Loading customer list...',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ),
+                            ] else if (showDropdown) ...[
+                              Container(
+                                margin: EdgeInsets.only(top: 4),
+                                constraints: BoxConstraints(maxHeight: 180),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: filteredCustomers.isEmpty
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(16.0),
+                                        child: Text(
+                                          'No customers found',
+                                          style: TextStyle(color: Colors.grey.shade600),
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        shrinkWrap: true,
+                                        padding: EdgeInsets.zero,
+                                        itemCount: filteredCustomers.length,
+                                        itemBuilder: (context, index) {
+                                          final customer = filteredCustomers[index];
+                                          return ListTile(
+                                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                            title: Text(
+                                              customer.customerName,
+                                              style: TextStyle(fontWeight: FontWeight.w500),
+                                            ),
+                                            subtitle: (customer.mobileNo != null && customer.mobileNo!.isNotEmpty)
+                                                ? Text(customer.mobileNo!)
+                                                : null,
+                                            onTap: () {
+                                              _customerController.text = customer.customerName;
+                                              // Close dropdown by triggering rebuild with empty text or custom state
+                                              setModalState(() {});
+                                            },
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        TextField(
+                          controller: _purposeController,
+                          decoration: InputDecoration(
+                            labelText: 'Purpose (Optional)',
+                            hintText: 'Visit purpose',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            prefixIcon: Icon(Icons.notes),
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                          ),
+                          maxLines: 2,
+                          textCapitalization: TextCapitalization.sentences,
+                        ),
+                      ],
+                    ),
                   ),
-                  prefixIcon: Icon(Icons.notes),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-                maxLines: 2,
-                textCapitalization: TextCapitalization.sentences,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _customerController.clear();
-                _purposeController.clear();
-                Navigator.pop(context);
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        _customerController.clear();
+                        _purposeController.clear();
+                        Navigator.pop(context);
+                      },
+                      child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      onPressed: _checkInToCustomer,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF764ba2),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text('Check In'),
+                    ),
+                  ],
+                );
               },
-              child: Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: _checkInToCustomer,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF764ba2),
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text('Check In'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
