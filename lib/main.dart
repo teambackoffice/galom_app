@@ -13,6 +13,7 @@ import 'package:location_tracker_app/controller/invoice_list_controller.dart';
 import 'package:location_tracker_app/controller/item_list_controller.dart';
 import 'package:location_tracker_app/controller/item_stock_controller.dart';
 import 'package:location_tracker_app/controller/item_tax_controller.dart';
+import 'package:location_tracker_app/controller/item_uom_controller.dart';
 import 'package:location_tracker_app/controller/leave_application_controller.dart';
 import 'package:location_tracker_app/controller/leave_type_controller.dart';
 import 'package:location_tracker_app/controller/login_controller.dart';
@@ -71,6 +72,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SalesInvoiceIdsController()),
         ChangeNotifierProvider(create: (_) => SalesInvoiceDetailController()),
         ChangeNotifierProvider(create: (_) => ItemTaxController()),
+        ChangeNotifierProvider(create: (_) => ItemUomController()),
         ChangeNotifierProvider(create: (_) => GetSpecialOfferController()),
         ChangeNotifierProvider(create: (_) => SpecialOfferController()),
         ChangeNotifierProvider(create: (_) => EmployeeTaskController()),

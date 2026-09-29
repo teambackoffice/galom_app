@@ -13,7 +13,7 @@ class LeaveApprovalRejectService {
       final sid = await _storage.read(key: 'sid');
 
       final url = Uri.parse(
-        'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.approve_leave_application?docname=$docName',
+        '${ApiConstants.galomBaseUrl}leave_api.approve_leave_application?docname=$docName',
       );
 
       final headers = {
@@ -41,7 +41,7 @@ class LeaveApprovalRejectService {
       final sid = await _storage.read(key: 'sid');
 
       final url = Uri.parse(
-        'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.reject_leave_application?docname=$docName',
+        '${ApiConstants.galomBaseUrl}leave_api.reject_leave_application?docname=$docName',
       );
 
       final headers = {

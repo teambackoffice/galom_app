@@ -6,7 +6,7 @@ import UserNotifications
 import CoreLocation
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, CLLocationManagerDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, CLLocationManagerDelegate {
     // Firebase and notification properties (existing)
     
     // Location tracking properties (new)
@@ -17,6 +17,7 @@ import CoreLocation
     private var trackingInterval: TimeInterval = 60.0 // Default 1 minute
     private var isTracking = false
     private var currentLocationResult: FlutterResult?
+    private var lastLocation: CLLocation?
     
     override func application(
         _ application: UIApplication,
@@ -24,7 +25,6 @@ import CoreLocation
     ) -> Bool {
         // Firebase setup (existing)
         FirebaseApp.configure()
-        GeneratedPluginRegistrant.register(with: self)
 
         // Firebase notifications setup (existing)
         UNUserNotificationCenter.current().delegate = self
@@ -32,27 +32,30 @@ import CoreLocation
 
         // Location tracking setup (new)
         setupLocationManager()
-        
-        // Setup method channel immediately after GeneratedPluginRegistrant
-        // The Flutter engine is ready at this point
-        setupMethodChannel()
+
+        // App lifecycle callbacks are not delivered to the app delegate under UIScene,
+        // so observe the lifecycle notifications instead
+        NotificationCenter.default.addObserver(self, selector: #selector(appDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(appWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
 
         return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
 
+    // UIScene lifecycle: the Flutter engine is created by the scene, so plugins and
+    // method channels are registered here once it is ready
+    func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        setupMethodChannel(messenger: engineBridge.applicationRegistrar.messenger())
+    }
+
     // MARK: - Location Tracking Setup (NEW)
-    
-    private func setupMethodChannel() {
-        guard let controller = window?.rootViewController as? FlutterViewController else {
-            print("❌ [NATIVE] Failed to get FlutterViewController - window: \(String(describing: window)), rootVC: \(String(describing: window?.rootViewController))")
-            return
-        }
-        
-        print("✅ [NATIVE] Setting up method channel with FlutterViewController")
-        
+
+    private func setupMethodChannel(messenger: FlutterBinaryMessenger) {
+        print("✅ [NATIVE] Setting up method channel")
+
         methodChannel = FlutterMethodChannel(
             name: "location_tracking",
-            binaryMessenger: controller.binaryMessenger
+            binaryMessenger: messenger
         )
         
         methodChannel?.setMethodCallHandler { [weak self] call, result in
@@ -218,20 +221,19 @@ import CoreLocation
         }
         
         print("✅ Starting location tracking with \(intervalSeconds)s interval")
-        trackingInterval = TimeInterval(intervalSeconds)
+        trackingInterval = TimeInterval(max(intervalSeconds, 10))
         isTracking = true
-        
-        // Start location updates (compatible with older iOS)
+
+        // Background updates must be enabled before starting so iOS keeps the
+        // app alive (and the Dart side running) while it is in the background
+        locationManager.allowsBackgroundLocationUpdates = true
+        locationManager.pausesLocationUpdatesAutomatically = false
+        locationManager.showsBackgroundLocationIndicator = true
+        locationManager.activityType = .automotiveNavigation
+
+        // Continuous updates keep the app running; the timer decides when to send
         locationManager.startUpdatingLocation()
-        
-        // Start timer for regular updates
         startLocationTimer()
-        
-        // Enable background location updates (iOS 9.0+)
-        if #available(iOS 9.0, *) {
-            locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.pausesLocationUpdatesAutomatically = false
-        }
         
         print("✅ Location tracking started successfully")
         result(true)
@@ -244,23 +246,17 @@ import CoreLocation
         }
         
         isTracking = false
-        
+        lastLocation = nil
+
         // Stop location services
         locationManager.stopUpdatingLocation()
-        
-        if #available(iOS 9.0, *) {
-            locationManager.allowsBackgroundLocationUpdates = false
-        }
+        locationManager.allowsBackgroundLocationUpdates = false
         
         // Stop timer
         locationTimer?.invalidate()
         locationTimer = nil
         
-        // End background task if running
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
-        }
+        endBackgroundTaskIfNeeded()
         
         result(true)
     }
@@ -278,26 +274,36 @@ import CoreLocation
     }
     
     private func startLocationTimer() {
-        locationTimer = Timer.scheduledTimer(withTimeInterval: trackingInterval, repeats: true) { [weak self] _ in
-            self?.requestCurrentLocation()
+        locationTimer?.invalidate()
+        let timer = Timer(timeInterval: trackingInterval, repeats: true) { [weak self] _ in
+            self?.sendLatestLocation()
         }
-        
-        // Get initial location
-        requestCurrentLocation()
+        RunLoop.main.add(timer, forMode: .common)
+        locationTimer = timer
+
+        // Send right away if a fix is already available
+        sendLatestLocation()
     }
-    
-    private func requestCurrentLocation() {
-        guard let locationManager = locationManager else { return }
-        
-        // Start background task
+
+    // Sends the most recent fix from the continuous updates. Calling
+    // requestLocation() while startUpdatingLocation() is active is unreliable.
+    private func sendLatestLocation() {
+        guard isTracking, let location = lastLocation else { return }
+        sendLocationToFlutter(latitude: location.coordinate.latitude,
+                              longitude: location.coordinate.longitude)
+    }
+
+    private func beginBackgroundTaskIfNeeded() {
+        guard backgroundTask == .invalid else { return }
         backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
-            if let bgTask = self?.backgroundTask {
-                UIApplication.shared.endBackgroundTask(bgTask)
-                self?.backgroundTask = .invalid
-            }
+            self?.endBackgroundTaskIfNeeded()
         }
-        
-        locationManager.requestLocation()
+    }
+
+    private func endBackgroundTaskIfNeeded() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
     }
     
     private func getCurrentLocation(result: @escaping FlutterResult) {
@@ -318,16 +324,22 @@ import CoreLocation
             return
         }
         
-        // Start background task for single location request
-        backgroundTask = UIApplication.shared.beginBackgroundTask { [weak self] in
-            if let bgTask = self?.backgroundTask {
-                UIApplication.shared.endBackgroundTask(bgTask)
-                self?.backgroundTask = .invalid
-            }
+        // While tracking, a recent fix from the continuous updates is good enough
+        if isTracking, let location = lastLocation, -location.timestamp.timeIntervalSinceNow < 30 {
+            result(["latitude": location.coordinate.latitude,
+                    "longitude": location.coordinate.longitude])
+            return
         }
-        
-        // Store the result for the single location request
+
+        // Answer any request still waiting so its Dart future doesn't hang
+        currentLocationResult?(FlutterError(code: "SUPERSEDED", message: "Superseded by a newer location request", details: nil))
+
+        beginBackgroundTaskIfNeeded()
         currentLocationResult = result
+        if isTracking {
+            // Continuous updates are running; the next fix will answer this request
+            return
+        }
         locationManager.requestLocation()
     }
     
@@ -373,26 +385,25 @@ import CoreLocation
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        
+
         // Handle single location request
         if let result = currentLocationResult {
-            let locationData: [String: Any] = [
+            result([
                 "latitude": location.coordinate.latitude,
                 "longitude": location.coordinate.longitude
-            ]
-            result(locationData)
+            ])
             currentLocationResult = nil
-        } else {
-            // Handle continuous tracking
-            sendLocationToFlutter(latitude: location.coordinate.latitude, 
-                                 longitude: location.coordinate.longitude)
         }
-        
-        // End background task
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
+
+        // Continuous tracking: keep the latest fix; the timer sends it each interval.
+        // The very first fix after starting is sent immediately.
+        if isTracking {
+            let isFirstFix = lastLocation == nil
+            lastLocation = location
+            if isFirstFix { sendLatestLocation() }
         }
+
+        endBackgroundTaskIfNeeded()
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -403,12 +414,8 @@ import CoreLocation
         } else {
             sendErrorToFlutter(error: "Location error: \(error.localizedDescription)")
         }
-        
-        // End background task
-        if backgroundTask != .invalid {
-            UIApplication.shared.endBackgroundTask(backgroundTask)
-            backgroundTask = .invalid
-        }
+
+        endBackgroundTaskIfNeeded()
     }
     
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -438,9 +445,7 @@ import CoreLocation
     
     // MARK: - App Lifecycle (NEW)
     
-    override func applicationDidEnterBackground(_ application: UIApplication) {
-        super.applicationDidEnterBackground(application)
-        
+    @objc private func appDidEnterBackground() {
         if isTracking {
             // Ensure background location continues
             if #available(iOS 9.0, *) {
@@ -449,9 +454,7 @@ import CoreLocation
         }
     }
     
-    override func applicationWillEnterForeground(_ application: UIApplication) {
-        super.applicationWillEnterForeground(application)
-        
+    @objc private func appWillEnterForeground() {
         if isTracking && locationTimer == nil {
             // Restart timer when coming to foreground
             startLocationTimer()

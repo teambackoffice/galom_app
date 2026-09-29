@@ -35,9 +35,9 @@ class Message {
   });
 
   factory Message.fromJson(Map<String, dynamic> json) => Message(
-    status: json["status"],
-    code: json["code"],
-    message: json["message"],
+    status: json["status"]?.toString() ?? '',
+    code: (json["code"] as num?)?.toInt() ?? 0,
+    message: json["message"]?.toString() ?? '',
     data: Data.fromJson(json["data"]),
   );
 
@@ -52,18 +52,19 @@ class Message {
 class Data {
   String name;
   String owner;
-  DateTime modified;
-  String modifiedBy;
+  DateTime? modified;
+  String? modifiedBy;
   int docstatus;
   String idx;
+  // Empty when the interval is not set in "Location Update Settings"
   String locationUpdateInterval;
   String doctype;
 
   Data({
     required this.name,
     required this.owner,
-    required this.modified,
-    required this.modifiedBy,
+    this.modified,
+    this.modifiedBy,
     required this.docstatus,
     required this.idx,
     required this.locationUpdateInterval,
@@ -71,20 +72,22 @@ class Data {
   });
 
   factory Data.fromJson(Map<String, dynamic> json) => Data(
-    name: json["name"],
-    owner: json["owner"],
-    modified: DateTime.parse(json["modified"]),
-    modifiedBy: json["modified_by"],
-    docstatus: json["docstatus"],
-    idx: json["idx"],
-    locationUpdateInterval: json["location_update_interval"],
-    doctype: json["doctype"],
+    name: json["name"]?.toString() ?? '',
+    owner: json["owner"]?.toString() ?? '',
+    modified: json["modified"] != null
+        ? DateTime.tryParse(json["modified"].toString())
+        : null,
+    modifiedBy: json["modified_by"]?.toString(),
+    docstatus: (json["docstatus"] as num?)?.toInt() ?? 0,
+    idx: json["idx"]?.toString() ?? '',
+    locationUpdateInterval: json["location_update_interval"]?.toString() ?? '',
+    doctype: json["doctype"]?.toString() ?? '',
   );
 
   Map<String, dynamic> toJson() => {
     "name": name,
     "owner": owner,
-    "modified": modified.toIso8601String(),
+    "modified": modified?.toIso8601String(),
     "modified_by": modifiedBy,
     "docstatus": docstatus,
     "idx": idx,

@@ -1,3 +1,4 @@
+import 'package:location_tracker_app/config/api_constant.dart';
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -13,7 +14,7 @@ class GetAdminLeaveApplicationService {
       final sid = await _storage.read(key: 'sid');
 
       final url = Uri.parse(
-        'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.get_leave_application',
+        '${ApiConstants.galomBaseUrl}leave_api.get_leave_application',
       );
 
       final headers = {'Authorization': 'token $sid', 'Cookie': 'sid=$sid'};

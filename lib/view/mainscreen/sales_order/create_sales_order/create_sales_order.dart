@@ -5,11 +5,13 @@ import 'package:location_tracker_app/controller/create_sales_order_controller.da
 import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/item_list_controller.dart';
 import 'package:location_tracker_app/controller/item_tax_controller.dart'; // Add this import
+import 'package:location_tracker_app/controller/item_uom_controller.dart';
 import 'package:location_tracker_app/controller/sales_order_controller.dart';
 import 'package:location_tracker_app/controller/specialOffer/get_special_offer_controller.dart';
 import 'package:location_tracker_app/controller/specialOffer/post_special_offer_controller.dart';
 import 'package:location_tracker_app/modal/customer_list_modal.dart';
 import 'package:location_tracker_app/modal/item_tax_modal.dart'; // Add this import
+import 'package:location_tracker_app/modal/item_uom_modal.dart';
 import 'package:provider/provider.dart';
 
 // Enhanced OrderItem class with tax information
@@ -20,6 +22,8 @@ class OrderItem {
   final int qty;
   final String taxTemplate;
   final double taxRate;
+  final String uom;
+  final double conversionFactor;
 
   OrderItem({
     required this.item_code,
@@ -28,6 +32,8 @@ class OrderItem {
     required this.qty,
     required this.taxTemplate,
     required this.taxRate,
+    required this.uom,
+    required this.conversionFactor,
   });
 
   double get subtotal => rate * qty;
@@ -42,6 +48,8 @@ class OrderItem {
       'qty': qty,
       'tax_template': taxTemplate,
       'tax_rate': taxRate,
+      'uom': uom,
+      'conversion_factor': conversionFactor,
     };
   }
 }
@@ -1754,43 +1762,43 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                         ),
                       ],
                     ),
-                     Wrap(
-                       crossAxisAlignment: WrapCrossAlignment.center,
-                       spacing: 8,
-                       runSpacing: 4,
-                       children: [
-                         // Price
-                         Text(
-                           '₹${product.price.toStringAsFixed(2)}',
-                           style: TextStyle(
-                             color: Color(0xFF764BA2),
-                             fontSize: 14,
-                             fontWeight: FontWeight.w700,
-                           ),
-                         ),
-                         // Tax Badge
-                         if (taxRate > 0)
-                           Container(
-                             padding: EdgeInsets.symmetric(
-                               horizontal: 6,
-                               vertical: 2,
-                             ),
-                             decoration: BoxDecoration(
-                               color: Colors.green.shade50,
-                               borderRadius: BorderRadius.circular(4),
-                               border: Border.all(color: Colors.green.shade200),
-                             ),
-                             child: Text(
-                               'GST: ${taxRate.toStringAsFixed(1)}%',
-                               style: TextStyle(
-                                 fontSize: 10,
-                                 color: Colors.green.shade700,
-                                 fontWeight: FontWeight.w600,
-                               ),
-                             ),
-                           ),
-                       ],
-                     ),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        // Price
+                        Text(
+                          '₹${product.price.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: Color(0xFF764BA2),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        // Tax Badge
+                        if (taxRate > 0)
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.green.shade200),
+                            ),
+                            child: Text(
+                              'GST: ${taxRate.toStringAsFixed(1)}%',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green.shade700,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1874,185 +1882,299 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
     );
     final taxRate = _getTaxRate(item.taxTemplate, taxList);
 
+    final uomController = Provider.of<ItemUomController>(
+      context,
+      listen: false,
+    );
+    // Fallback so the dialog still works if the UOM API fails
+    final fallbackUom = UomConversion(uom: item.unit, conversionFactor: 1.0);
+    String? selectedUom = editIndex != null ? _orderItems[editIndex].uom : null;
+    uomController.getItemUom(item.name);
+
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: Color(0xFF764BA2),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Center(
-                  child: Text(
-                    editIndex != null
-                        ? "Edit ${item.name}"
-                        : "Add ${item.name}",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => Consumer<ItemUomController>(
+          builder: (context, uomCtrl, _) {
+            final uomDetails = uomCtrl.uomFor(item.name);
+            final uomOptions =
+                (uomDetails != null && uomDetails.uoms.isNotEmpty)
+                ? uomDetails.uoms
+                : [fallbackUom];
+            final isUomLoading = uomDetails == null && uomCtrl.isLoading;
 
-              // Price and Tax Info
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
+            if (selectedUom == null ||
+                !uomOptions.any((u) => u.uom == selectedUom)) {
+              final preferred = uomDetails?.defaultUom;
+              selectedUom = uomOptions
+                  .firstWhere(
+                    (u) => u.uom == preferred,
+                    orElse: () => uomOptions.first,
+                  )
+                  .uom;
+            }
+            final selected = uomOptions.firstWhere((u) => u.uom == selectedUom);
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Container(
+                padding: EdgeInsets.all(20),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Price per ${item.unit}:',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+                    // Header
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF764BA2),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Center(
+                        child: Text(
+                          editIndex != null
+                              ? "Edit ${item.name}"
+                              : "Add ${item.name}",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        Text(
-                          '₹${item.price.toStringAsFixed(2)}',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // Price and Tax Info
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Price per ${selected.uom}:',
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              Text(
+                                '₹${item.price.toStringAsFixed(2)}',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          if (taxRate > 0) ...[
+                            SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'GST Rate:',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                Text(
+                                  '${taxRate.toStringAsFixed(1)}%',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+
+                    // UOM Dropdown
+                    isUomLoading
+                        ? Container(
+                            height: 56,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey.shade400),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF764BA2),
+                                  ),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Loading units...',
+                                  style: TextStyle(color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          )
+                        : DropdownButtonFormField<String>(
+                            value: selectedUom,
+                            isExpanded: true,
+                            decoration: InputDecoration(
+                              labelText: 'Unit of Measure',
+                              labelStyle: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              prefixIcon: Icon(
+                                Icons.straighten_rounded,
+                                color: Color(0xFF764BA2),
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                  color: Color(0xFF764BA2),
+                                  width: 2,
+                                ),
+                              ),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                            ),
+                            items: uomOptions.map((u) {
+                              return DropdownMenuItem<String>(
+                                value: u.uom,
+                                child: Text(
+                                  u.uom,
+                                  style: TextStyle(fontSize: 16),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              setDialogState(() => selectedUom = value);
+                            },
+                          ),
+
+                    SizedBox(height: 16),
+
+                    // Quantity Input
+                    TextField(
+                      controller: quantityController,
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(fontSize: 18),
+                      decoration: InputDecoration(
+                        labelText: 'Quantity',
+                        labelStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        suffixText: selected.uom,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 30),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: Color(0xFF764BA2),
+                                width: 1.5,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Color(0xFF764BA2),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              final quantity =
+                                  double.tryParse(quantityController.text) ?? 0;
+                              if (quantity > 0) {
+                                final orderItem = OrderItem(
+                                  item_code: item.name,
+                                  item_name: item.itemName,
+                                  rate: item.price,
+                                  qty: quantity.toInt(),
+                                  taxTemplate: item.taxTemplate,
+                                  taxRate: taxRate,
+                                  uom: selected.uom,
+                                  conversionFactor: selected.conversionFactor,
+                                );
+
+                                setState(() {
+                                  if (editIndex != null) {
+                                    _orderItems[editIndex] = orderItem;
+                                  } else {
+                                    _orderItems.add(orderItem);
+                                  }
+                                  _calculateTotal();
+                                });
+
+                                Navigator.pop(context); // Close dialog
+                                if (editIndex == null) {
+                                  Navigator.pop(
+                                    this.context,
+                                  ); // Close bottom sheet for add
+                                }
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF764BA2),
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              editIndex != null ? 'Update' : 'Add',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                    if (taxRate > 0) ...[
-                      SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'GST Rate:',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            '${taxRate.toStringAsFixed(1)}%',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
                   ],
                 ),
               ),
-              SizedBox(height: 20),
-
-              // Quantity Input
-              TextField(
-                controller: quantityController,
-                keyboardType: TextInputType.number,
-                style: TextStyle(fontSize: 18),
-                decoration: InputDecoration(
-                  labelText: 'Quantity',
-                  labelStyle: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  suffixText: item.unit,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
-
-              SizedBox(height: 30),
-
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: Color(0xFF764BA2), width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Color(0xFF764BA2),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final quantity =
-                            double.tryParse(quantityController.text) ?? 0;
-                        if (quantity > 0) {
-                          final orderItem = OrderItem(
-                            item_code: item.name,
-                            item_name: item.itemName,
-                            rate: item.price,
-                            qty: quantity.toInt(),
-                            taxTemplate: item.taxTemplate,
-                            taxRate: taxRate,
-                          );
-
-                          setState(() {
-                            if (editIndex != null) {
-                              _orderItems[editIndex] = orderItem;
-                            } else {
-                              _orderItems.add(orderItem);
-                            }
-                            _calculateTotal();
-                          });
-
-                          Navigator.pop(context); // Close dialog
-                          if (editIndex == null) {
-                            Navigator.pop(
-                              context,
-                            ); // Close bottom sheet for add
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF764BA2),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        editIndex != null ? 'Update' : 'Add',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
@@ -2116,7 +2238,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                         runSpacing: 4,
                         children: [
                           Text(
-                            '₹${item.rate.toStringAsFixed(2)} × ${item.qty}',
+                            '₹${item.rate.toStringAsFixed(2)} × ${item.qty} ${item.uom}',
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 14,
@@ -2215,7 +2337,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'Qty: ${item.qty}',
+                        'Qty: ${item.qty} ${item.uom}',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -2310,7 +2432,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
       name: item.item_code,
       itemName: item.item_name, // ✅ ADD THIS LINE
       price: item.rate,
-      unit: 'unit',
+      unit: item.uom,
       taxTemplate: item.taxTemplate,
     );
 

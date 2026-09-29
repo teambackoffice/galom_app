@@ -1,3 +1,4 @@
+import 'package:location_tracker_app/config/api_constant.dart';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -8,7 +9,7 @@ class CreateLeaveApplicationService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   final String url =
-      'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.create_leave_application';
+      '${ApiConstants.galomBaseUrl}leave_api.create_leave_application';
 
   Future<Map<String, dynamic>?> createLeaveApplication({
     required String employee,

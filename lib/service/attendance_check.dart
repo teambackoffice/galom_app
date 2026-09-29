@@ -1,10 +1,11 @@
+import 'package:location_tracker_app/config/api_constant.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class AttendanceService {
   static const String _baseModule =
-      'https://metta.tbo365.cloud/api/method/galom.galom.attendance_api';
+      '${ApiConstants.galomBaseUrl}attendance_api';
 
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 

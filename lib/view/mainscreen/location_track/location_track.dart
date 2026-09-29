@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location_tracker_app/controller/attendance_check_controller.dart';
+import 'package:location_tracker_app/controller/employee_location_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_log.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_timer.dart';
@@ -72,9 +73,24 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
 
     // Bootstrap: fetch real status from the server.
     // employee_id is read from secure storage by AttendanceService.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<UpdatedAttendanceController>().init();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<UpdatedAttendanceController>().init();
+      await _syncLiveTracking();
     });
+  }
+
+  // Keeps the live (periodic) location tracker in step with attendance status:
+  // running while checked in, stopped while checked out.
+  Future<void> _syncLiveTracking() async {
+    if (!mounted) return;
+    final attendance = context.read<UpdatedAttendanceController>();
+    final live = context.read<LocationController>();
+    if (attendance.isInitializing || attendance.isLoading) return;
+    if (attendance.isTracking && !live.isTracking) {
+      await live.startLiveTracking();
+    } else if (!attendance.isTracking && live.isTracking) {
+      await live.stopLiveTracking();
+    }
   }
 
   @override
@@ -127,14 +143,15 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
       barrierDismissible: false,
       builder: (ctx) => _CheckActionDialog(
         isCheckIn: isCheckIn,
-        onConfirm: (km, photo) {
+        onConfirm: (km, photo) async {
           Navigator.pop(ctx);
           final ctrl = context.read<UpdatedAttendanceController>();
           if (isCheckIn) {
-            ctrl.startTracking(km: km, photo: photo);
+            await ctrl.startTracking(km: km, photo: photo);
           } else {
-            ctrl.stopTracking(km: km, photo: photo);
+            await ctrl.stopTracking(km: km, photo: photo);
           }
+          await _syncLiveTracking();
         },
       ),
     );

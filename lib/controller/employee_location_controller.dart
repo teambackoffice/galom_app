@@ -618,6 +618,39 @@ class LocationController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Live tracking only (no Check In / Check Out entries) — used by the
+  // attendance page, which records check-in/out through the attendance API.
+  Future<void> startLiveTracking() async {
+    try {
+      if (!_intervalLoaded) await _loadTrackingIntervalFromAPI();
+      if (!await requestPermissions()) return;
+
+      final bool started = await _channel.invokeMethod(
+        'startLocationTracking',
+        {'intervalSeconds': trackingInterval},
+      );
+      isTracking = started;
+      await _saveTrackingState();
+      if (!started) error = '❌ Failed to start live location tracking';
+      print("📡 Live tracking started=$started (${trackingInterval}s)");
+    } catch (e) {
+      error = '❌ Live tracking error: $e';
+      print("❌ Live tracking error: $e");
+    }
+    notifyListeners();
+  }
+
+  Future<void> stopLiveTracking() async {
+    try {
+      await _channel.invokeMethod('stopLocationTracking');
+    } catch (e) {
+      print("❌ Stop live tracking error: $e");
+    }
+    isTracking = false;
+    await _saveTrackingState();
+    notifyListeners();
+  }
+
   // Updated method to use API interval and refresh from API
   Future<void> updateTrackingInterval(int intervalSeconds) async {
     trackingInterval = intervalSeconds;

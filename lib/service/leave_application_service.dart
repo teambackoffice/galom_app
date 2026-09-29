@@ -1,3 +1,4 @@
+import 'package:location_tracker_app/config/api_constant.dart';
 import 'dart:convert';
 import 'dart:developer' as developer;
 
@@ -9,7 +10,7 @@ class GetLeaveApplicationService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   final String url =
-      'https://metta.tbo365.cloud/api/method/galom.galom.leave_api.get_leave_applications';
+      '${ApiConstants.galomBaseUrl}leave_api.get_leave_applications';
 
   Future<LeaveApplicationModalClass?> getLeaveApplications() async {
     try {
