@@ -614,6 +614,11 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
   String halfDaySession = 'Morning';
   final TextEditingController reasonController = TextEditingController();
 
+  // The sheet has its own messenger so error snackbars show above it
+  // instead of behind it on the list page.
+  final GlobalKey<ScaffoldMessengerState> _sheetMessengerKey =
+      GlobalKey<ScaffoldMessengerState>();
+
   @override
   void initState() {
     super.initState();
@@ -699,7 +704,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
   Future<void> _submit() async {
     final validationError = _validate();
     if (validationError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _sheetMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(validationError),
           backgroundColor: const Color(0xFFE24B4A),
@@ -718,7 +723,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
     if (!mounted) return;
 
     if (employee.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _sheetMessengerKey.currentState?.showSnackBar(
         const SnackBar(
           content: Text('Employee ID not found. Please login again.'),
           backgroundColor: Color(0xFFE24B4A),
@@ -773,7 +778,7 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
         ),
       );
     } else if (controller.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      _sheetMessengerKey.currentState?.showSnackBar(
         SnackBar(
           content: Text(controller.errorMessage!),
           backgroundColor: const Color(0xFFE24B4A),
@@ -790,6 +795,31 @@ class _LeaveApplySheetState extends State<LeaveApplySheet> {
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).viewInsets.bottom;
 
+    return ScaffoldMessenger(
+      key: _sheetMessengerKey,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        resizeToAvoidBottomInset: false,
+        body: Stack(
+          children: [
+            // Scaffold fills the screen, so dismiss on taps above the sheet.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.pop(context),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: _buildSheet(bottomPad),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheet(double bottomPad) {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,

@@ -6,10 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
-import android.provider.Settings
 import androidx.annotation.NonNull
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -78,7 +76,7 @@ class MainActivity: FlutterActivity() {
         android.util.Log.d("LocationTracking", "📍 Requesting location permissions")
         pendingResult = result
         
-        if (hasLocationPermissions()) {
+        if (hasForegroundLocationPermission()) {
             android.util.Log.d("LocationTracking", "✅ Location permissions already granted")
             result.success(true)
             return
@@ -103,23 +101,30 @@ class MainActivity: FlutterActivity() {
             return
         }
 
-        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            android.util.Log.d("LocationTracking", "📍 Android 10+: Requesting fine, coarse, and background location")
-            arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-            )
-        } else {
-            android.util.Log.d("LocationTracking", "📍 Android 9-: Requesting fine and coarse location")
+        // Android 11+ rejects background location when it is requested together
+        // with foreground location, so foreground must be granted first.
+        val permissions = if (!hasForegroundLocationPermission()) {
+            android.util.Log.d("LocationTracking", "📍 Requesting fine and coarse location")
             arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
             )
+        } else {
+            android.util.Log.d("LocationTracking", "📍 Requesting background location")
+            arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
         }
 
         android.util.Log.d("LocationTracking", "📍 Showing permission dialog...")
         ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST_CODE)
+    }
+
+    // "While using the app" is enough for the location foreground service,
+    // since it is always started while the app is open.
+    private fun hasForegroundLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this,
+            Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this,
+            Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun hasLocationPermissions(): Boolean {
@@ -142,11 +147,9 @@ class MainActivity: FlutterActivity() {
         android.util.Log.d("LocationTracking", "📍 Starting location tracking with ${intervalSeconds}s interval")
         
         // Check if permissions are granted
-        if (!hasLocationPermissions()) {
-            android.util.Log.w("LocationTracking", "⚠️ Location permissions not granted, requesting...")
-            // Request permissions first
-            pendingResult = result
-            requestBackgroundPermission(result)
+        if (!hasForegroundLocationPermission()) {
+            android.util.Log.w("LocationTracking", "⚠️ Location permission not granted, cannot start tracking")
+            result.success(false)
             return
         }
 
@@ -215,14 +218,6 @@ class MainActivity: FlutterActivity() {
             permissions.forEachIndexed { index, permission ->
                 val granted = if (index < grantResults.size) grantResults[index] == PackageManager.PERMISSION_GRANTED else false
                 android.util.Log.d("LocationTracking", "  - $permission: ${if (granted) "✅ GRANTED" else "❌ DENIED"}")
-            }
-            
-            if (!allGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                android.util.Log.w("LocationTracking", "⚠️ Not all permissions granted, opening app settings")
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", packageName, null)
-                }
-                startActivity(intent)
             }
             
             pendingResult?.success(allGranted)

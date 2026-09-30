@@ -39,7 +39,16 @@ class CreateLeaveApplicationController extends ChangeNotifier {
 
       if (response != null) {
         responseData = response;
-        isSuccess = true;
+        // The API returns HTTP 200 even when validation fails; the real
+        // outcome is in message.status.
+        final message = response['message'];
+        if (message is Map && message['status'] == 'error') {
+          errorMessage =
+              message['message']?.toString() ??
+              'Failed to submit leave application';
+        } else {
+          isSuccess = true;
+        }
       } else {
         errorMessage = 'Failed to submit leave application';
       }

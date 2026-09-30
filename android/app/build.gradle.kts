@@ -15,10 +15,16 @@ plugins {
 // Load keystore properties
 val keystoreProperties = Properties()
 val keystorePropertiesFile = file("key.properties")
-if (keystorePropertiesFile.exists()) {
+val hasKeystore = keystorePropertiesFile.exists()
+if (hasKeystore) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-} else {
-    throw GradleException("⚠️ key.properties file not found at ${keystorePropertiesFile.path}")
+}
+
+// Release builds must be signed with the real keystore; debug builds fall back to the default debug key.
+gradle.taskGraph.whenReady {
+    if (!hasKeystore && allTasks.any { it.name.contains("Release") }) {
+        throw GradleException("⚠️ key.properties file not found at ${keystorePropertiesFile.path}")
+    }
 }
 
 configurations.all {
@@ -41,7 +47,7 @@ android {
     }
 
     signingConfigs {
-        create("release") {
+        if (hasKeystore) create("release") {
             val keyAliasValue = keystoreProperties["keyAlias"] as? String
                 ?: throw GradleException("keyAlias missing in key.properties")
             val keyPasswordValue = keystoreProperties["keyPassword"] as? String
@@ -62,10 +68,10 @@ android {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("release")
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
         }
         debug {
-            signingConfig = signingConfigs.getByName("release")
+            if (hasKeystore) signingConfig = signingConfigs.getByName("release")
         }
     }
 
