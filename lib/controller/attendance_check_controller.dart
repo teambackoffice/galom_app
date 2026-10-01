@@ -1,5 +1,6 @@
 // lib/controller/employee_location_controller.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -145,9 +146,25 @@ class UpdatedAttendanceController extends ChangeNotifier {
         return null;
       }
 
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      // Reuse a recent cached fix if available — returns instantly.
+      final lastKnown = await Geolocator.getLastKnownPosition();
+      if (lastKnown != null &&
+          DateTime.now().difference(lastKnown.timestamp) <
+              const Duration(minutes: 2)) {
+        return lastKnown;
+      }
+
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+            timeLimit: Duration(seconds: 8),
+          ),
+        );
+      } on TimeoutException {
+        // Don't block check-in waiting for GPS; fall back to any cached fix.
+        return lastKnown;
+      }
     } catch (e) {
       error = 'Error getting location: $e';
       notifyListeners();

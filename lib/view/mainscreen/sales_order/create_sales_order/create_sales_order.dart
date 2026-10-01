@@ -1914,6 +1914,11 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                   .uom;
             }
             final selected = uomOptions.firstWhere((u) => u.uom == selectedUom);
+            final stockUom = uomDetails?.stockUom ?? item.unit;
+            // item.price is per stock UOM; scale it to the selected UOM
+            final uomRate = item.price * selected.conversionFactor;
+            String fmtFactor(double f) =>
+                f == f.roundToDouble() ? f.toInt().toString() : f.toString();
 
             return Dialog(
               shape: RoundedRectangleBorder(
@@ -1964,11 +1969,30 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                                 style: TextStyle(fontWeight: FontWeight.w500),
                               ),
                               Text(
-                                '₹${item.price.toStringAsFixed(2)}',
+                                '₹${uomRate.toStringAsFixed(2)}',
                                 style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
+                          if (selected.uom != stockUom) ...[
+                            SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Conversion:',
+                                  style: TextStyle(fontWeight: FontWeight.w500),
+                                ),
+                                Text(
+                                  '1 ${selected.uom} = ${fmtFactor(selected.conversionFactor)} $stockUom',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           if (taxRate > 0) ...[
                             SizedBox(height: 4),
                             Row(
@@ -2052,7 +2076,9 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                               return DropdownMenuItem<String>(
                                 value: u.uom,
                                 child: Text(
-                                  u.uom,
+                                  u.uom == stockUom
+                                      ? u.uom
+                                      : '${u.uom} (×${fmtFactor(u.conversionFactor)})',
                                   style: TextStyle(fontSize: 16),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -2126,7 +2152,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                                 final orderItem = OrderItem(
                                   item_code: item.name,
                                   item_name: item.itemName,
-                                  rate: item.price,
+                                  rate: uomRate,
                                   qty: quantity.toInt(),
                                   taxTemplate: item.taxTemplate,
                                   taxRate: taxRate,
@@ -2431,7 +2457,10 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
     final inventoryItem = InventoryItem(
       name: item.item_code,
       itemName: item.item_name, // ✅ ADD THIS LINE
-      price: item.rate,
+      // Dialog expects the per-stock-UOM price, so undo the conversion
+      price: item.conversionFactor != 0
+          ? item.rate / item.conversionFactor
+          : item.rate,
       unit: item.uom,
       taxTemplate: item.taxTemplate,
     );
