@@ -24,6 +24,8 @@ class OrderItem {
   final double taxRate;
   final String uom;
   final double conversionFactor;
+  // List price per stock UOM, kept so a manually changed rate can be reset
+  final double? basePrice;
 
   OrderItem({
     required this.item_code,
@@ -34,6 +36,7 @@ class OrderItem {
     required this.taxRate,
     required this.uom,
     required this.conversionFactor,
+    this.basePrice,
   });
 
   double get subtotal => rate * qty;
@@ -1889,6 +1892,14 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
     // Fallback so the dialog still works if the UOM API fails
     final fallbackUom = UomConversion(uom: item.unit, conversionFactor: 1.0);
     String? selectedUom = editIndex != null ? _orderItems[editIndex].uom : null;
+    // null = use the list price for the selected UOM
+    double? customRate;
+    int rateResets = 0;
+    if (editIndex != null) {
+      final existing = _orderItems[editIndex];
+      final listRate = item.price * existing.conversionFactor;
+      if ((existing.rate - listRate).abs() > 0.001) customRate = existing.rate;
+    }
     uomController.getItemUom(item.name);
 
     showDialog(
@@ -2086,7 +2097,11 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             }).toList(),
                             onChanged: (value) {
                               if (value == null) return;
-                              setDialogState(() => selectedUom = value);
+                              setDialogState(() {
+                                selectedUom = value;
+                                customRate = null;
+                                rateResets++;
+                              });
                             },
                           ),
 
@@ -2107,6 +2122,65 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixText: selected.uom,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Rate Input (defaults to list price, editable)
+                    TextFormField(
+                      // Rebuild with the new default when the UOM changes
+                      // or the rate is reset
+                      key: ValueKey('rate-$selectedUom-$rateResets'),
+                      initialValue: (customRate ?? uomRate).toStringAsFixed(2),
+                      enabled: !isUomLoading,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: TextStyle(fontSize: 18),
+                      onChanged: (value) {
+                        final parsed = double.tryParse(value);
+                        final wasCustom = customRate != null;
+                        customRate = parsed ?? -1;
+                        if (!wasCustom) setDialogState(() {});
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Rate per ${selected.uom}',
+                        labelStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        prefixText: '₹ ',
+                        helperText: customRate != null
+                            ? 'List price: ₹${uomRate.toStringAsFixed(2)}'
+                            : null,
+                        suffixIcon: customRate != null
+                            ? IconButton(
+                                tooltip: 'Reset to list price',
+                                icon: Icon(
+                                  Icons.restart_alt_rounded,
+                                  color: Color(0xFF764BA2),
+                                ),
+                                onPressed: () => setDialogState(() {
+                                  customRate = null;
+                                  rateResets++;
+                                }),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Color(0xFF764BA2),
+                            width: 2,
+                          ),
+                        ),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
@@ -2148,16 +2222,27 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             onPressed: () {
                               final quantity =
                                   double.tryParse(quantityController.text) ?? 0;
+                              final rate = customRate ?? uomRate;
+                              if (rate < 0) {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter a valid rate'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
                               if (quantity > 0) {
                                 final orderItem = OrderItem(
                                   item_code: item.name,
                                   item_name: item.itemName,
-                                  rate: uomRate,
+                                  rate: rate,
                                   qty: quantity.toInt(),
                                   taxTemplate: item.taxTemplate,
                                   taxRate: taxRate,
                                   uom: selected.uom,
                                   conversionFactor: selected.conversionFactor,
+                                  basePrice: item.price,
                                 );
 
                                 setState(() {
@@ -2458,9 +2543,11 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
       name: item.item_code,
       itemName: item.item_name, // ✅ ADD THIS LINE
       // Dialog expects the per-stock-UOM price, so undo the conversion
-      price: item.conversionFactor != 0
-          ? item.rate / item.conversionFactor
-          : item.rate,
+      price:
+          item.basePrice ??
+          (item.conversionFactor != 0
+              ? item.rate / item.conversionFactor
+              : item.rate),
       unit: item.uom,
       taxTemplate: item.taxTemplate,
     );

@@ -14,22 +14,28 @@ class CreateSalesOrderService {
     required String customer,
     required String deliveryDate,
     required List<Map<String, dynamic>> items,
+    bool submit = true,
   }) async {
     try {
       final sid = await _secureStorage.read(key: 'sid');
       if (sid == null) throw Exception("Session expired. Please log in again.");
-
-      final salesPerson = await _secureStorage.read(key: 'sales_person_id');
-      if (salesPerson == null)
-        throw Exception("Sales person not found. Please contact admin.");
 
       var headers = {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'};
 
       var body = json.encode({
         "customer": customer,
         "delivery_date": deliveryDate,
-        "sales_person": salesPerson,
-        "items": items,
+        "submit": submit,
+        "items": items
+            .map(
+              (item) => {
+                "item_code": item['item_code'],
+                "qty": item['qty'],
+                if (item['uom'] != null) "uom": item['uom'],
+                if (item['rate'] != null) "rate": item['rate'],
+              },
+            )
+            .toList(),
       });
 
       print("📤 Request URL: $url");

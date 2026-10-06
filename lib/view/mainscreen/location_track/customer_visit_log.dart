@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/customer_log_visit_controller.dart';
@@ -22,6 +25,12 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
   MessageElement? _selectedCustomer;
   List<MessageElement> _filteredCustomers = [];
   bool _showCustomerDropdown = false;
+
+  final ImagePicker _picker = ImagePicker();
+  File? _capturedImage;
+  DateTime? _capturedAt;
+  bool _isPickingImage = false;
+  bool _isLastCounter = false;
 
   @override
   void initState() {
@@ -71,6 +80,36 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
       _showCustomerDropdown = false;
       _filteredCustomers = [];
     });
+  }
+
+  Future<void> _captureImage() async {
+    if (_isPickingImage) return;
+    setState(() => _isPickingImage = true);
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+        maxWidth: 1600,
+      );
+      if (picked != null) {
+        setState(() {
+          _capturedImage = File(picked.path);
+          _capturedAt = DateTime.now();
+          _showSuccess = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not capture image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPickingImage = false);
+    }
   }
 
   Future<Position> _getCurrentLocation() async {
@@ -133,6 +172,8 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
             _selectedCustomer?.customerName ??
             _customerNameController.text.trim(),
         description: _descriptionController.text.trim(),
+        photo: _capturedImage,
+        isLastCounter: _isLastCounter,
       );
 
       if (controller.errorMessage == null) {
@@ -162,6 +203,9 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
       _selectedCustomer = null;
       _filteredCustomers = [];
       _showCustomerDropdown = false;
+      _capturedImage = null;
+      _capturedAt = null;
+      _isLastCounter = false;
     });
   }
 
@@ -375,7 +419,21 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
                         maxLines: 4,
                         enabled: !_isSubmitting,
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+                      Divider(color: Colors.grey[200], height: 1),
+                      const SizedBox(height: 20),
+
+                      _buildSectionHeader(
+                        icon: Icons.photo_camera_outlined,
+                        title: 'Visit Photo',
+                        trailing: 'Optional',
+                      ),
+                      const SizedBox(height: 10),
+                      _buildImageCapture(enabled: !_isSubmitting),
+                      const SizedBox(height: 20),
+
+                      _buildLastCounterSwitch(enabled: !_isSubmitting),
+                      const SizedBox(height: 28),
 
                       SizedBox(
                         width: double.infinity,
@@ -504,6 +562,409 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    String? trailing,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey[700]),
+        const SizedBox(width: 6),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+        ),
+        if (trailing != null) ...[
+          const Spacer(),
+          Text(
+            trailing,
+            style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildImageCapture({required bool enabled}) {
+    final canCapture = enabled && !_isPickingImage;
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: _capturedImage == null
+          ? _buildCapturePlaceholder(canCapture: canCapture)
+          : _buildCapturedPreview(enabled: enabled, canCapture: canCapture),
+    );
+  }
+
+  Widget _buildCapturePlaceholder({required bool canCapture}) {
+    return CustomPaint(
+      key: const ValueKey('placeholder'),
+      painter: _DashedBorderPainter(
+        color: canCapture ? Colors.blue[300]! : Colors.grey[300]!,
+      ),
+      child: Material(
+        color: canCapture
+            ? Colors.blue[50]!.withValues(alpha: 0.5)
+            : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: canCapture ? _captureImage : null,
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: double.infinity,
+            height: 160,
+            child: _isPickingImage
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Opening camera...',
+                        style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: canCapture
+                              ? Colors.blue[600]
+                              : Colors.grey[300],
+                          shape: BoxShape.circle,
+                          boxShadow: canCapture
+                              ? [
+                                  BoxShadow(
+                                    color: Colors.blue.withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: const Icon(
+                          Icons.photo_camera_rounded,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Capture Visit Photo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: canCapture
+                              ? Colors.blue[800]
+                              : Colors.grey[500],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Take a clear photo of the counter or shop',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCapturedPreview({
+    required bool enabled,
+    required bool canCapture,
+  }) {
+    return Container(
+      key: const ValueKey('preview'),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          children: [
+            GestureDetector(
+              onTap: _openImageViewer,
+              child: Hero(
+                tag: 'visit-photo',
+                child: Image.file(
+                  _capturedImage!,
+                  width: double.infinity,
+                  height: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              left: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.green[600],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _capturedAt != null
+                          ? 'Captured ${DateFormat('hh:mm a').format(_capturedAt!)}'
+                          : 'Captured',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Material(
+                color: Colors.black.withValues(alpha: 0.45),
+                shape: const CircleBorder(),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.fullscreen_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  tooltip: 'View',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _openImageViewer,
+                ),
+              ),
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 24, 12, 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildPillButton(
+                        icon: Icons.refresh_rounded,
+                        label: 'Retake',
+                        onPressed: canCapture ? _captureImage : null,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildPillButton(
+                        icon: Icons.delete_outline_rounded,
+                        label: 'Remove',
+                        isDestructive: true,
+                        onPressed: enabled
+                            ? () => setState(() {
+                                _capturedImage = null;
+                                _capturedAt = null;
+                              })
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openImageViewer() {
+    if (_capturedImage == null) return;
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        pageBuilder: (context, _, __) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            title: const Text('Visit Photo', style: TextStyle(fontSize: 16)),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              minScale: 1,
+              maxScale: 4,
+              child: Hero(
+                tag: 'visit-photo',
+                child: Image.file(_capturedImage!),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPillButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+    bool isDestructive = false,
+  }) {
+    final fg = isDestructive ? Colors.white : Colors.blue[700];
+    return Material(
+      color: isDestructive
+          ? Colors.red.withValues(alpha: 0.85)
+          : Colors.white.withValues(alpha: 0.95),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLastCounterSwitch({required bool enabled}) {
+    final active = _isLastCounter;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: active ? Colors.orange[50] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? Colors.orange[300]! : Colors.grey[200]!,
+          width: active ? 1.5 : 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled
+              ? () => setState(() => _isLastCounter = !_isLastCounter)
+              : null,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+            child: Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: active ? Colors.orange[600] : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: active
+                        ? null
+                        : Border.all(color: Colors.grey[200]!),
+                  ),
+                  child: Icon(
+                    active ? Icons.flag_rounded : Icons.storefront_outlined,
+                    size: 22,
+                    color: active ? Colors.white : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Last Counter',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: active ? Colors.orange[900] : Colors.grey[800],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        active
+                            ? 'This is the final visit of the day'
+                            : 'Turn on if this is your final visit today',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch.adaptive(
+                  value: active,
+                  onChanged: enabled
+                      ? (value) => setState(() => _isLastCounter = value)
+                      : null,
+                  activeTrackColor: Colors.orange[600],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -643,4 +1104,43 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
       ),
     );
   }
+}
+
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+
+  static const double radius = 12;
+  static const double strokeWidth = 1.5;
+  static const double dashLength = 6;
+  static const double gapLength = 4;
+
+  _DashedBorderPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke;
+
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+
+    for (final metric in path.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        canvas.drawPath(
+          metric.extractPath(distance, distance + dashLength),
+          paint,
+        );
+        distance += dashLength + gapLength;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
