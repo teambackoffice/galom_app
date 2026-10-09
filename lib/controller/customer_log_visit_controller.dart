@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:location_tracker_app/service/customer_log_visit_service.dart';
 
@@ -15,6 +17,9 @@ class LogCustomerVisitController extends ChangeNotifier {
     required double latitude,
     required String customerName,
     required String description,
+    File? photo,
+    bool isFirstCounter = false,
+    bool isLastCounter = false,
   }) async {
     isLoading = true;
     errorMessage = null;
@@ -28,6 +33,9 @@ class LogCustomerVisitController extends ChangeNotifier {
         latitude: latitude,
         customerName: customerName,
         description: description,
+        photo: photo,
+        isFirstCounter: isFirstCounter,
+        isLastCounter: isLastCounter,
       );
 
       responseData = result;

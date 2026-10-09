@@ -6,7 +6,8 @@ import 'package:location_tracker_app/config/api_constant.dart';
 import 'package:location_tracker_app/modal/item_stock_modal.dart';
 
 class ItemStockService {
-  static const String baseUrl = "${ApiConstants.baseUrl}get_all_items_stock";
+  static const String baseUrl =
+      "https://metta.tbocloud.in/api/method/sales_pilot.Api.auth.get_all_items_stock";
 
   Future<ItemStockModal> getAllStockItems() async {
     try {

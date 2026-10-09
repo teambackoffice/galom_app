@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:location_tracker_app/service/login_service.dart';
 import 'package:location_tracker_app/view/login/login_page.dart';
-import 'package:location_tracker_app/view/mainscreen/homepage.dart';
+import 'package:location_tracker_app/view/manager/manager_gate.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => isLoggedIn ? MainScreen() : LoginPage(),
+          builder: (context) => isLoggedIn ? const HomeGate() : LoginPage(),
         ),
       );
     }
