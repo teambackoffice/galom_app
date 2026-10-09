@@ -79,6 +79,11 @@ class LoginService {
         );
         await _secureStorage.write(key: 'role_profile', value: roleProfile);
         await _secureStorage.write(key: 'roles', value: jsonEncode(roles));
+        // Hint only; get_manager_access stays the source of truth.
+        await _secureStorage.write(
+          key: 'is_manager',
+          value: message['is_manager'] == true ? '1' : '0',
+        );
 
         debugPrint('========== STORAGE SUCCESS ==========');
         debugPrint('All values stored successfully');
