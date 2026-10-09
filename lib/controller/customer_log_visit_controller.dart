@@ -18,6 +18,7 @@ class LogCustomerVisitController extends ChangeNotifier {
     required String customerName,
     required String description,
     File? photo,
+    bool isFirstCounter = false,
     bool isLastCounter = false,
   }) async {
     isLoading = true;
@@ -33,6 +34,7 @@ class LogCustomerVisitController extends ChangeNotifier {
         customerName: customerName,
         description: description,
         photo: photo,
+        isFirstCounter: isFirstCounter,
         isLastCounter: isLastCounter,
       );
 

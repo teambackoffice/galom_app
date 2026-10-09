@@ -18,6 +18,7 @@ class LogCustomerVisitService {
     required String customerName,
     required String description,
     File? photo,
+    bool isFirstCounter = false,
     bool isLastCounter = false,
   }) async {
     try {
@@ -31,6 +32,7 @@ class LogCustomerVisitService {
       print('📝 Description: $description');
       print('📍 Latitude: $latitude');
       print('📍 Longitude: $longitude');
+      print('🏁 Is First Counter: $isFirstCounter');
       print('🔚 Is Last Counter: $isLastCounter');
       print('📸 Photo: ${photo?.path ?? "No photo"}');
       print('🍪 SID: ${sid ?? "NULL"}');
@@ -49,10 +51,12 @@ class LogCustomerVisitService {
           'time': time,
           'latitude': latitude.toString(),
           'longitude': longitude.toString(),
+          'is_first_counter': isFirstCounter.toString(),
           'is_last_counter': isLastCounter.toString(),
         });
 
-      if (photo != null) {
+      // Visit photo is only accepted for first/last counter visits
+      if ((isFirstCounter || isLastCounter) && photo != null) {
         request.files.add(
           await http.MultipartFile.fromPath('visit_photo', photo.path),
         );

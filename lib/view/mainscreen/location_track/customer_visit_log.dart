@@ -9,6 +9,33 @@ import 'package:location_tracker_app/controller/customer_log_visit_controller.da
 import 'package:location_tracker_app/modal/customer_list_modal.dart';
 import 'package:provider/provider.dart';
 
+enum _VisitType {
+  first(
+    label: 'First Counter',
+    hint: 'First visit of the day, add a photo of the counter',
+    icon: Icons.wb_sunny_outlined,
+    color: Colors.green,
+  ),
+  last(
+    label: 'Last Counter',
+    hint: 'Final visit of the day, add a photo of the counter',
+    icon: Icons.flag_outlined,
+    color: Colors.orange,
+  );
+
+  const _VisitType({
+    required this.label,
+    required this.hint,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final String hint;
+  final IconData icon;
+  final MaterialColor color;
+}
+
 class CustomerVisitLogger extends StatefulWidget {
   const CustomerVisitLogger({super.key});
 
@@ -30,7 +57,22 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
   File? _capturedImage;
   DateTime? _capturedAt;
   bool _isPickingImage = false;
-  bool _isLastCounter = false;
+  _VisitType? _visitType;
+
+  bool get _isFirstCounter => _visitType == _VisitType.first;
+  bool get _isLastCounter => _visitType == _VisitType.last;
+  bool get _canAttachPhoto => _visitType != null;
+
+  /// Toggles the visit type; a photo is only kept for first/last counter
+  void _setVisitType(_VisitType type) {
+    setState(() {
+      _visitType = _visitType == type ? null : type;
+      if (!_canAttachPhoto) {
+        _capturedImage = null;
+        _capturedAt = null;
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -172,7 +214,8 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
             _selectedCustomer?.customerName ??
             _customerNameController.text.trim(),
         description: _descriptionController.text.trim(),
-        photo: _capturedImage,
+        photo: _canAttachPhoto ? _capturedImage : null,
+        isFirstCounter: _isFirstCounter,
         isLastCounter: _isLastCounter,
       );
 
@@ -205,7 +248,7 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
       _showCustomerDropdown = false;
       _capturedImage = null;
       _capturedAt = null;
-      _isLastCounter = false;
+      _visitType = null;
     });
   }
 
@@ -424,15 +467,55 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
                       const SizedBox(height: 20),
 
                       _buildSectionHeader(
-                        icon: Icons.photo_camera_outlined,
-                        title: 'Visit Photo',
+                        icon: Icons.storefront_outlined,
+                        title: 'Visit Type',
                         trailing: 'Optional',
+                        action: _visitType == null
+                            ? null
+                            : TextButton.icon(
+                                onPressed: _isSubmitting
+                                    ? null
+                                    : () => _setVisitType(_visitType!),
+                                icon: const Icon(Icons.close_rounded, size: 16),
+                                label: const Text('Clear'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red[400],
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
                       ),
                       const SizedBox(height: 10),
-                      _buildImageCapture(enabled: !_isSubmitting),
-                      const SizedBox(height: 20),
+                      _buildVisitTypeSelector(enabled: !_isSubmitting),
 
-                      _buildLastCounterSwitch(enabled: !_isSubmitting),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOut,
+                        alignment: Alignment.topCenter,
+                        child: _canAttachPhoto
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionHeader(
+                                      icon: Icons.photo_camera_outlined,
+                                      title: 'Visit Photo',
+                                      trailing: 'Optional',
+                                    ),
+                                    const SizedBox(height: 10),
+                                    _buildImageCapture(enabled: !_isSubmitting),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox(width: double.infinity),
+                      ),
                       const SizedBox(height: 28),
 
                       SizedBox(
@@ -571,6 +654,7 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
     required IconData icon,
     required String title,
     String? trailing,
+    Widget? action,
   }) {
     return Row(
       children: [
@@ -584,7 +668,10 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
             color: Colors.grey[800],
           ),
         ),
-        if (trailing != null) ...[
+        if (action != null) ...[
+          const Spacer(),
+          action,
+        ] else if (trailing != null) ...[
           const Spacer(),
           Text(
             trailing,
@@ -890,77 +977,120 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
     );
   }
 
-  Widget _buildLastCounterSwitch({required bool enabled}) {
-    final active = _isLastCounter;
+  Widget _buildVisitTypeSelector({required bool enabled}) {
+    final selected = _visitType;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              for (final type in _VisitType.values)
+                Expanded(
+                  child: _buildVisitTypeOption(
+                    type: type,
+                    active: type == selected,
+                    enabled: enabled,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Row(
+            key: ValueKey(selected),
+            children: [
+              Icon(
+                Icons.info_outline,
+                size: 14,
+                color: selected?.color[700] ?? Colors.grey[500],
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  selected == null
+                      ? 'Select only if this is your first or last visit today'
+                      : '${selected.hint} · tap again to unselect',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVisitTypeOption({
+    required _VisitType type,
+    required bool active,
+    required bool enabled,
+  }) {
+    final color = type.color;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
-        color: active ? Colors.orange[50] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
+        color: active ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(
-          color: active ? Colors.orange[300]! : Colors.grey[200]!,
-          width: active ? 1.5 : 1,
+          color: active ? color[300]! : Colors.transparent,
+          width: 1.5,
         ),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: enabled
-              ? () => setState(() => _isLastCounter = !_isLastCounter)
-              : null,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(11),
+          onTap: enabled ? () => _setVisitType(type) : null,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-            child: Row(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 40,
-                  height: 40,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
-                    color: active ? Colors.orange[600] : Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: active
-                        ? null
-                        : Border.all(color: Colors.grey[200]!),
+                    color: active ? color[600] : Colors.white,
+                    shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    active ? Icons.flag_rounded : Icons.storefront_outlined,
-                    size: 22,
-                    color: active ? Colors.white : Colors.grey[600],
+                    type.icon,
+                    size: 18,
+                    color: active ? Colors.white : Colors.grey[500],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Last Counter',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: active ? Colors.orange[900] : Colors.grey[800],
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        active
-                            ? 'This is the final visit of the day'
-                            : 'Turn on if this is your final visit today',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      ),
-                    ],
+                const SizedBox(height: 6),
+                Text(
+                  type.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active ? color[800] : Colors.grey[600],
                   ),
-                ),
-                Switch.adaptive(
-                  value: active,
-                  onChanged: enabled
-                      ? (value) => setState(() => _isLastCounter = value)
-                      : null,
-                  activeTrackColor: Colors.orange[600],
                 ),
               ],
             ),
