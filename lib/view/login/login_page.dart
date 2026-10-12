@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:location_tracker_app/controller/login_controller.dart';
-import 'package:location_tracker_app/view/mainscreen/homepage.dart';
+import 'package:location_tracker_app/view/manager/manager_gate.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -108,7 +108,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                MainScreen(),
+                const HomeGate(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return SlideTransition(

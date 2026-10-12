@@ -33,6 +33,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
   // ADD THESE NEW VARIABLES:
   TextEditingController referenceNumberController = TextEditingController();
   TextEditingController referenceDateController = TextEditingController();
+  TextEditingController descriptionController = TextEditingController();
   DateTime? selectedReferenceDate;
 
   @override
@@ -55,6 +56,9 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
   @override
   void dispose() {
     paymentController.dispose();
+    referenceNumberController.dispose();
+    referenceDateController.dispose();
+    descriptionController.dispose();
     for (var controller in invoiceControllers.values) {
       controller.dispose();
     }
@@ -283,6 +287,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       showAllocationWarning = false; // ADD THIS LINE
       referenceNumberController.clear();
       referenceDateController.clear();
+      descriptionController.clear();
       selectedReferenceDate = null;
 
       for (var controller in invoiceControllers.values) {
@@ -1439,6 +1444,37 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
 
               SizedBox(height: 16),
 
+              // Description
+              Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      TextFormField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: 'Enter description (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 16),
+
               // Invoice List
               if (paymentEntryData != null && !isLoadingPaymentData) ...[
                 paymentEntryData?.message.totalOutstandingAmount == 0
@@ -1785,6 +1821,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                   selectedReferenceDate != null
               ? DateFormat('yyyy-MM-dd').format(selectedReferenceDate!)
               : null,
+          description: descriptionController.text.trim(),
         );
 
         if (controller.responseData != null) {

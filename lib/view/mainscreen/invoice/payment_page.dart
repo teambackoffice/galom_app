@@ -31,6 +31,7 @@ class _PaymentPageState extends State<PaymentPage>
   final _amountController = TextEditingController();
   final _referenceNumberController = TextEditingController();
   final _referenceDateController = TextEditingController();
+  final _descriptionController = TextEditingController();
   late AnimationController _amountAnimationController;
   late Animation<double> _amountScaleAnimation;
 
@@ -73,6 +74,7 @@ class _PaymentPageState extends State<PaymentPage>
       referenceDate: _referenceDateController.text.isNotEmpty
           ? DateFormat('yyyy-MM-dd').parse(_referenceDateController.text)
           : null,
+      description: _descriptionController.text,
 
       // "card" or "cash"
     );
@@ -508,6 +510,48 @@ class _PaymentPageState extends State<PaymentPage>
     );
   }
 
+  Widget _buildDescriptionField() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Description',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: 'Enter description (optional)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF667EEA),
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _selectReferenceDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -620,6 +664,7 @@ class _PaymentPageState extends State<PaymentPage>
             _buildAmountInput(),
             const SizedBox(height: 24),
             _buildReferenceFields(),
+            _buildDescriptionField(),
             const SizedBox(height: 24),
 
             // Payment Methods
@@ -809,6 +854,9 @@ class _PaymentPageState extends State<PaymentPage>
     _cvvController.dispose();
     _nameController.dispose();
     _amountController.dispose();
+    _referenceNumberController.dispose();
+    _referenceDateController.dispose();
+    _descriptionController.dispose();
     _amountAnimationController.dispose();
     super.dispose();
   }
