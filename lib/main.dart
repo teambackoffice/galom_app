@@ -19,6 +19,7 @@ import 'package:location_tracker_app/controller/leave_type_controller.dart';
 import 'package:location_tracker_app/controller/login_controller.dart';
 import 'package:location_tracker_app/controller/manager/manager_access_controller.dart';
 import 'package:location_tracker_app/controller/mode_of_pay_controller.dart';
+import 'package:location_tracker_app/controller/my_target_controller.dart';
 import 'package:location_tracker_app/controller/pay_sales_invoice_controller.dart';
 import 'package:location_tracker_app/controller/payment_entry_controller.dart';
 import 'package:location_tracker_app/controller/payment_entry_draft_controller.dart';
@@ -95,6 +96,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => LeaveTypesController(),
         ),
+        ChangeNotifierProvider(create: (_) => MyTargetController()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

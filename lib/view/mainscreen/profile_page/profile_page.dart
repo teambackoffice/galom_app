@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:location_tracker_app/controller/manager/manager_access_controller.dart';
 import 'package:location_tracker_app/view/login/login_page.dart';
 import 'package:location_tracker_app/view/mainscreen/profile_page/leave_application/leave_application.dart';
+import 'package:location_tracker_app/view/mainscreen/target/my_target.dart';
 import 'package:provider/provider.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -145,6 +146,34 @@ class _ProfilePageState extends State<ProfilePage> {
                               'Galom International Pvt Ltd ',
                             ),
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // My Target
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: _buildActionItem(
+                          Icons.flag_rounded,
+                          'My Target',
+                          'Monthly target, achievement & pending amount',
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const MyTargetPage(),
+                            ),
+                          ),
                         ),
                       ),
 

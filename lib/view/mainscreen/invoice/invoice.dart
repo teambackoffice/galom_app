@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:location_tracker_app/controller/invoice_list_controller.dart';
+import 'package:location_tracker_app/controller/my_target_controller.dart';
 import 'package:location_tracker_app/modal/invoice_list_modal.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/invoice_details.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/payment_entry.dart'
     hide Invoice;
 import 'package:location_tracker_app/view/mainscreen/invoice/payment_page.dart'
     hide Invoice;
+import 'package:location_tracker_app/view/mainscreen/target/my_target.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -33,6 +35,10 @@ class _InvoicePageState extends State<InvoicePage> {
         context,
         listen: false,
       ).fetchInvoiceList();
+      Provider.of<MyTargetController>(
+        context,
+        listen: false,
+      ).fetchCurrentMonthSummary();
     });
   }
 
@@ -69,6 +75,10 @@ class _InvoicePageState extends State<InvoicePage> {
   // Refresh function
   Future<void> _onRefresh() async {
     try {
+      Provider.of<MyTargetController>(
+        context,
+        listen: false,
+      ).fetchCurrentMonthSummary();
       await Provider.of<InvoiceListController>(
         context,
         listen: false,
@@ -172,8 +182,17 @@ class _InvoicePageState extends State<InvoicePage> {
                             Expanded(
                               child: ListView.builder(
                                 physics: AlwaysScrollableScrollPhysics(),
-                                itemCount: filteredInvoices.length,
+                                // Target overview sits above the invoices,
+                                // hidden while searching.
+                                itemCount: filteredInvoices.length +
+                                    (_searchQuery.isEmpty ? 1 : 0),
                                 itemBuilder: (context, index) {
+                                  if (_searchQuery.isEmpty) {
+                                    if (index == 0) {
+                                      return const InvoiceTargetSection();
+                                    }
+                                    index -= 1;
+                                  }
                                   final invoice = filteredInvoices[index];
                                   return InkWell(
                                     borderRadius: BorderRadius.circular(16),
@@ -528,8 +547,20 @@ class _InvoicePageState extends State<InvoicePage> {
   Widget _buildEmptyState() {
     return SingleChildScrollView(
       physics: AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const InvoiceTargetSection(),
+          _buildEmptyMessage(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyMessage() {
+    return SizedBox(
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.3,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
