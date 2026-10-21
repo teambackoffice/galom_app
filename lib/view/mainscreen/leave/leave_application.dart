@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:location_tracker_app/modal/leave_applicatrion_modal.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:location_tracker_app/controller/leave_type_controller.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_claims.dart';
 
 // --- Entry Point Widget ---
 class LeaveApplication extends StatelessWidget {
@@ -270,8 +271,59 @@ class _LeaveListPageState extends State<LeaveListPage> {
               ],
             ),
           ),
+          _menuButton(),
         ],
       ),
+    );
+  }
+
+  Widget _menuButton() {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.more_horiz, color: Color(0xFF0D1B3E), size: 20),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      elevation: 4,
+      color: Colors.white,
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'expense_claims',
+          child: Row(
+            children: [
+              Icon(
+                Icons.receipt_long_rounded,
+                size: 18,
+                color: Color(0xFF0D1B3E),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Expense Claims',
+                style: TextStyle(fontSize: 14, color: Color(0xFF0D1B3E)),
+              ),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (v) {
+        if (v == 'expense_claims') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ExpenseClaimsPage()),
+          );
+        }
+      },
     );
   }
 
