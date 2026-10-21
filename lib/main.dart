@@ -10,6 +10,7 @@ import 'package:location_tracker_app/controller/customer_complaint_controller.da
 import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/customer_log_visit_controller.dart';
 import 'package:location_tracker_app/controller/employee_location_controller.dart';
+import 'package:location_tracker_app/controller/expense_claim_controller.dart';
 import 'package:location_tracker_app/controller/invoice_list_controller.dart';
 import 'package:location_tracker_app/controller/item_list_controller.dart';
 import 'package:location_tracker_app/controller/item_stock_controller.dart';
@@ -99,6 +100,7 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(create: (_) => MyTargetController()),
         ChangeNotifierProvider(create: (_) => CustomerComplaintController()),
+        ChangeNotifierProvider(create: (_) => ExpenseClaimController()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

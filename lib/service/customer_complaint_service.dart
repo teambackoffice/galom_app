@@ -142,10 +142,18 @@ class CustomerComplaintService {
     if (message is String &&
         message.trim().isNotEmpty &&
         response.statusCode != 401) {
-      throw Exception(message);
+      throw Exception(_plainText(message));
     }
     throw Exception(_messageForStatus(response.statusCode));
   }
+
+  /// Frappe messages can contain HTML such as `<strong>` or `<a href>`.
+  String _plainText(String html) => html
+      .replaceAll(RegExp(r'<[^>]*>'), '')
+      .replaceAll('&nbsp;', ' ')
+      .replaceAll('&amp;', '&')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 
   String _messageForStatus(int code) {
     switch (code) {
