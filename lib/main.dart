@@ -6,6 +6,7 @@ import 'package:location_tracker_app/controller/create_leave_controller.dart';
 import 'package:location_tracker_app/controller/create_payment_entry_controller.dart';
 import 'package:location_tracker_app/controller/create_sales_order_controller.dart';
 import 'package:location_tracker_app/controller/create_sales_return_contoller.dart';
+import 'package:location_tracker_app/controller/customer_complaint_controller.dart';
 import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/customer_log_visit_controller.dart';
 import 'package:location_tracker_app/controller/employee_location_controller.dart';
@@ -97,6 +98,7 @@ class MyApp extends StatelessWidget {
           create: (_) => LeaveTypesController(),
         ),
         ChangeNotifierProvider(create: (_) => MyTargetController()),
+        ChangeNotifierProvider(create: (_) => CustomerComplaintController()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

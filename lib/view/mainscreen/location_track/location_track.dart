@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:location_tracker_app/controller/attendance_check_controller.dart';
 import 'package:location_tracker_app/controller/employee_location_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:location_tracker_app/view/mainscreen/location_track/complaints/customer_complaints.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_log.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_timer.dart';
 
@@ -296,6 +297,23 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
             ],
           ),
         ),
+        PopupMenuItem(
+          value: 'complaints',
+          child: Row(
+            children: [
+              Icon(
+                Icons.report_problem_outlined,
+                size: 18,
+                color: Color(0xFF0D1B3E),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Customer Complaints',
+                style: TextStyle(fontSize: 14, color: Color(0xFF0D1B3E)),
+              ),
+            ],
+          ),
+        ),
         // PopupMenuItem(
         //   value: 'customer_timer',
         //   child: Row(
@@ -315,6 +333,11 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => CustomerVisitLogger()),
+          );
+        } else if (v == 'complaints') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CustomerComplaintsPage()),
           );
         } else {
           Navigator.push(

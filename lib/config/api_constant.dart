@@ -6,6 +6,8 @@ class ApiConstants {
       "${host}api/method/sales_pilot.Api.manager.";
   static const String targetsBaseUrl =
       "$host/api/method/sales_pilot.Api.targets.";
+  static const String complaintsBaseUrl =
+      "${host}api/method/sales_pilot.Api.complaints.";
 
   /// Stock inventory is served from a separate server.
   static const String stockHost = "https://metta.tbocloud.in/";
