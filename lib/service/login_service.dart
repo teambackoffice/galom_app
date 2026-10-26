@@ -82,7 +82,11 @@ class LoginService {
         // Hint only; get_manager_access stays the source of truth.
         await _secureStorage.write(
           key: 'is_manager',
-          value: message['is_manager'] == true ? '1' : '0',
+          value:
+              message['is_manager'] == true ||
+                  roleProfile?.toString().trim().toUpperCase() == 'ADMIN'
+              ? '1'
+              : '0',
         );
 
         debugPrint('========== STORAGE SUCCESS ==========');

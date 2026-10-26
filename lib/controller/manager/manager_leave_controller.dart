@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:location_tracker_app/modal/manager/manager_leave_modal.dart';
 import 'package:location_tracker_app/service/manager_leave_service.dart';
 import 'package:location_tracker_app/service/manager_service.dart';
@@ -13,9 +14,13 @@ enum LeaveFilter {
   const LeaveFilter(this.label);
   final String label;
 
-  bool matches(LeaveApplication l) => switch (this) {
+  /// The "awaiting approval" tab is labelled for the viewer's own stage.
+  String labelFor({required bool isAdmin}) =>
+      this == LeaveFilter.managerApproval && isAdmin ? 'Admin Approval' : label;
+
+  bool matches(LeaveApplication l, {required bool isAdmin}) => switch (this) {
     LeaveFilter.pending => l.isPending,
-    LeaveFilter.managerApproval => l.canAct,
+    LeaveFilter.managerApproval => l.canActAs(isAdmin: isAdmin),
     LeaveFilter.approved => l.status == 'Approved',
     LeaveFilter.rejected => l.status == 'Rejected',
     LeaveFilter.all => true,
@@ -25,10 +30,15 @@ enum LeaveFilter {
 /// Leave applications for the manager. The endpoint returns the full list
 /// (no paging or server filters), so filtering here is over complete data.
 class ManagerLeaveController with ChangeNotifier {
-  ManagerLeaveController({ManagerLeaveService? service})
-    : _service = service ?? ManagerLeaveService();
+  ManagerLeaveController({
+    ManagerLeaveService? service,
+    FlutterSecureStorage? storage,
+  }) : _service = service ?? ManagerLeaveService(),
+       _storage = storage ?? const FlutterSecureStorage();
 
   final ManagerLeaveService _service;
+  final FlutterSecureStorage _storage;
+  bool _isAdmin = false;
 
   List<LeaveApplication> _all = const [];
   bool _isLoading = false;
@@ -46,14 +56,23 @@ class ManagerLeaveController with ChangeNotifier {
   String get search => _search;
   bool isBusy(String name) => _busy.contains(name);
 
-  /// Leaves waiting on the manager (drives the home banner and nav badge).
-  int get managerApprovalCount => _all.where((l) => l.canAct).length;
-  int count(LeaveFilter f) => _all.where(f.matches).length;
+  /// True when the signed-in user's role profile is ADMIN.
+  bool get isAdmin => _isAdmin;
+
+  /// Whether the signed-in user may approve/reject [l] at its current stage.
+  bool canAct(LeaveApplication l) => l.canActAs(isAdmin: _isAdmin);
+
+  String filterLabel(LeaveFilter f) => f.labelFor(isAdmin: _isAdmin);
+
+  /// Leaves waiting on this user (drives the home banner and nav badge).
+  int get managerApprovalCount => _all.where(canAct).length;
+  int count(LeaveFilter f) =>
+      _all.where((l) => f.matches(l, isAdmin: _isAdmin)).length;
 
   List<LeaveApplication> get visible {
     final q = _search.toLowerCase();
     return _all.where((l) {
-      if (!_filter.matches(l)) return false;
+      if (!_filter.matches(l, isAdmin: _isAdmin)) return false;
       if (q.isEmpty) return true;
       return l.displayName.toLowerCase().contains(q) ||
           l.leaveType.toLowerCase().contains(q) ||
@@ -70,6 +89,8 @@ class ManagerLeaveController with ChangeNotifier {
     _error = null;
     _notify();
     try {
+      final roleProfile = await _storage.read(key: 'role_profile');
+      _isAdmin = roleProfile?.trim().toUpperCase() == 'ADMIN';
       final list = await _service.getLeaveApplications();
       // Pending first, then newest start date.
       list.sort((a, b) {

@@ -12,7 +12,7 @@ enum StockFilter {
   final String label;
 }
 
-/// Stock list with name search and low / out-of-stock filters. The endpoint
+/// Stock list with name search, item group, and low / out-of-stock filters. The endpoint
 /// returns all items at once, so filtering here covers the complete data.
 class ManagerStockController with ChangeNotifier {
   ManagerStockController({ManagerStockService? service})
@@ -29,6 +29,7 @@ class ManagerStockController with ChangeNotifier {
   ManagerApiException? _error;
   StockFilter _filter = StockFilter.all;
   String _search = '';
+  String? _itemGroup;
   double _lowThreshold = 10;
   bool _disposed = false;
 
@@ -39,18 +40,42 @@ class ManagerStockController with ChangeNotifier {
   String get search => _search;
   double get lowThreshold => _lowThreshold;
 
+  /// Selected item group, or null for all groups.
+  String? get itemGroup => _itemGroup;
+
+  /// Item groups present in the loaded stock, alphabetical.
+  List<String> get itemGroups {
+    final groups = {
+      for (final i in _all)
+        if (i.itemGroup != null && i.itemGroup!.trim().isNotEmpty)
+          i.itemGroup!.trim(),
+    }.toList();
+    groups.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return groups;
+  }
+
+  int get totalItems => _all.length;
+
+  int groupCount(String group) =>
+      _all.where((i) => i.itemGroup?.trim() == group).length;
+
+  bool _inGroup(StockItem i) =>
+      _itemGroup == null || i.itemGroup?.trim() == _itemGroup;
+
   bool _matches(StockItem i, StockFilter f) => switch (f) {
     StockFilter.all => true,
     StockFilter.low => i.isLow(_lowThreshold),
     StockFilter.out => i.isOutOfStock,
   };
 
-  int count(StockFilter f) => _all.where((i) => _matches(i, f)).length;
+  /// Counts within the selected item group.
+  int count(StockFilter f) =>
+      _all.where((i) => _inGroup(i) && _matches(i, f)).length;
 
   List<StockItem> get visible {
     final q = _search.toLowerCase();
     return _all.where((i) {
-      if (!_matches(i, _filter)) return false;
+      if (!_inGroup(i) || !_matches(i, _filter)) return false;
       if (q.isEmpty) return true;
       return i.displayName.toLowerCase().contains(q) ||
           i.itemCode.toLowerCase().contains(q);
@@ -76,6 +101,9 @@ class ManagerStockController with ChangeNotifier {
         );
       });
       _all = List.unmodifiable(items);
+      if (_itemGroup != null && !itemGroups.contains(_itemGroup)) {
+        _itemGroup = null;
+      }
       _loadedOnce = true;
     } on ManagerApiException catch (e) {
       _error = e;
@@ -99,6 +127,12 @@ class ManagerStockController with ChangeNotifier {
     final v = text.trim();
     if (v == _search) return;
     _search = v;
+    _notify();
+  }
+
+  void setItemGroup(String? group) {
+    if (group == _itemGroup) return;
+    _itemGroup = group;
     _notify();
   }
 

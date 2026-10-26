@@ -75,6 +75,116 @@ class _ManagerStockScreenState extends State<ManagerStockScreen> {
     if (picked != null) c.setLowThreshold(picked);
   }
 
+  Future<void> _pickItemGroup(ManagerStockController c) async {
+    final groups = c.itemGroups;
+    // Sentinel for "All groups", since a null pop means the sheet was dismissed.
+    const all = '\u0000all';
+    var query = '';
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          Widget tile(
+            String label,
+            String value,
+            bool selected,
+            int count,
+          ) => ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: MSpace.xl),
+            title: Text(label),
+            subtitle: Text('${MFormat.count(count)} items'),
+            trailing: selected
+                ? const Icon(Icons.check_circle_rounded, color: MColors.accent)
+                : null,
+            onTap: () => Navigator.pop(ctx, value),
+          );
+          final q = query.toLowerCase();
+          final matches = q.isEmpty
+              ? groups
+              : groups.where((g) => g.toLowerCase().contains(q)).toList();
+          return Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+            ),
+            child: SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(ctx).height * 0.7,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        MSpace.xl,
+                        0,
+                        MSpace.xl,
+                        MSpace.sm,
+                      ),
+                      child: Text(
+                        'Item group',
+                        style: MText.section.copyWith(fontSize: 17),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        MSpace.xl,
+                        0,
+                        MSpace.xl,
+                        MSpace.sm,
+                      ),
+                      child: TextField(
+                        onChanged: (v) => setSheetState(() => query = v.trim()),
+                        textInputAction: TextInputAction.search,
+                        decoration: const InputDecoration(
+                          hintText: 'Search item group',
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            size: 20,
+                            color: MColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          if (q.isEmpty)
+                            tile(
+                              'All groups',
+                              all,
+                              c.itemGroup == null,
+                              c.totalItems,
+                            ),
+                          for (final g in matches)
+                            tile(g, g, g == c.itemGroup, c.groupCount(g)),
+                          if (matches.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(MSpace.xl),
+                              child: Text(
+                                'No item groups found',
+                                textAlign: TextAlign.center,
+                                style: MText.meta,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: MSpace.md),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (picked != null) c.setItemGroup(picked == all ? null : picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.watch<ManagerStockController>();
@@ -114,6 +224,16 @@ class _ManagerStockScreenState extends State<ManagerStockScreen> {
                 vertical: MSpace.sm,
               ),
               children: [
+                if (c.hasLoaded && c.itemGroups.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: MSpace.sm),
+                    child: _Chip(
+                      label: c.itemGroup ?? 'All groups',
+                      icon: Icons.category_outlined,
+                      selected: c.itemGroup != null,
+                      onTap: () => _pickItemGroup(c),
+                    ),
+                  ),
                 for (final f in StockFilter.values)
                   Padding(
                     padding: const EdgeInsets.only(right: MSpace.sm),
@@ -180,7 +300,10 @@ class _ManagerStockScreenState extends State<ManagerStockScreen> {
             StockFilter.low when c.search.isEmpty => 'No low-stock items',
             _ => 'No items found',
           },
-          filtered: c.search.isNotEmpty,
+          filtered: c.search.isNotEmpty || c.itemGroup != null,
+          onClearFilters: c.itemGroup != null
+              ? () => c.setItemGroup(null)
+              : null,
         ),
       );
     }

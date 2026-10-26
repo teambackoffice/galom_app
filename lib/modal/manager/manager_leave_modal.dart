@@ -42,14 +42,17 @@ class LeaveApplication {
       employeeName.trim().isNotEmpty ? employeeName.trim() : employee;
 
   static const pendingManager = 'Pending for Manager Approval';
+  static const pendingAdmin = 'Pending for Admin Approval';
 
   /// Not yet submitted and not decided.
   bool get isPending =>
       docstatus == 0 && status != 'Approved' && status != 'Rejected';
 
-  /// The manager may approve/reject only at the manager stage. Leaves that
-  /// are "Open" or "Pending for Admin Approval" are view-only here.
-  bool get canAct => docstatus == 0 && status == pendingManager;
+  /// Each role may approve/reject only at its own stage: a manager acts on
+  /// "Pending for Manager Approval", an admin on "Pending for Admin
+  /// Approval". Everything else is view-only.
+  bool canActAs({required bool isAdmin}) =>
+      docstatus == 0 && status == (isAdmin ? pendingAdmin : pendingManager);
 
   /// Status shown to the user, exactly as the server reports it.
   String get displayStatus {

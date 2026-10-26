@@ -7,6 +7,7 @@ import 'package:location_tracker_app/service/manager_service.dart';
 /// `get_manager_access` is the source of truth. If it cannot be reached
 /// (offline, timeout) the `is_manager` flag saved at login is used instead,
 /// so salespersons are never blocked from their own screens.
+/// Users whose role profile is ADMIN always get the Manager experience.
 class ManagerAccessController with ChangeNotifier {
   ManagerAccessController({
     ManagerService? service,
@@ -18,6 +19,7 @@ class ManagerAccessController with ChangeNotifier {
   final FlutterSecureStorage _storage;
 
   static const String storageKey = 'is_manager';
+  static const String roleProfileKey = 'role_profile';
 
   bool _isManager = false;
   bool _isChecking = false;
@@ -30,6 +32,15 @@ class ManagerAccessController with ChangeNotifier {
   Future<bool> refresh() async {
     _isChecking = true;
     notifyListeners();
+    final roleProfile = await _storage.read(key: roleProfileKey);
+    if (roleProfile?.trim().toUpperCase() == 'ADMIN') {
+      _isManager = true;
+      await _storage.write(key: storageKey, value: '1');
+      _isChecking = false;
+      _checked = true;
+      notifyListeners();
+      return _isManager;
+    }
     try {
       _isManager = await _service.getManagerAccess();
       await _storage.write(key: storageKey, value: _isManager ? '1' : '0');

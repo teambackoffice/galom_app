@@ -74,8 +74,8 @@ class _ManagerLeavesScreenState extends State<ManagerLeavesScreen> {
                     padding: const EdgeInsets.only(right: MSpace.sm),
                     child: _FilterChip(
                       label: c.hasLoaded && f != LeaveFilter.all
-                          ? '${f.label} ${c.count(f)}'
-                          : f.label,
+                          ? '${c.filterLabel(f)} ${c.count(f)}'
+                          : c.filterLabel(f),
                       selected: c.filter == f,
                       onTap: () => c.setFilter(f),
                     ),
@@ -125,7 +125,9 @@ class _ManagerLeavesScreenState extends State<ManagerLeavesScreen> {
               : switch (c.filter) {
                   LeaveFilter.pending => 'No pending leave requests',
                   LeaveFilter.managerApproval =>
-                    'No leaves awaiting manager approval',
+                    c.isAdmin
+                        ? 'No leaves awaiting admin approval'
+                        : 'No leaves awaiting manager approval',
                   _ => 'No leave requests found',
                 },
           filtered: c.search.isNotEmpty,
@@ -273,7 +275,9 @@ class LeaveCard extends StatelessWidget {
               style: MText.meta,
             ),
           ],
-          if (l.canAct) ...[
+          if (context.select<ManagerLeaveController, bool>(
+            (c) => c.canAct(l),
+          )) ...[
             const SizedBox(height: MSpace.md),
             LeaveActions(leave: l),
           ],
@@ -568,7 +572,8 @@ class _LeaveDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l = context.watch<ManagerLeaveController>().byName(name);
+    final c = context.watch<ManagerLeaveController>();
+    final l = c.byName(name);
     if (l == null) return const SizedBox(height: 120);
     return SafeArea(
       child: ConstrainedBox(
@@ -644,7 +649,7 @@ class _LeaveDetailSheet extends StatelessWidget {
               if (l.postingDate != null)
                 InfoRow('Applied on', MFormat.date(l.postingDate)),
               InfoRow('Application', l.name, copyable: true),
-              if (l.canAct) ...[
+              if (c.canAct(l)) ...[
                 const SizedBox(height: MSpace.lg),
                 LeaveActions(
                   leave: l,
