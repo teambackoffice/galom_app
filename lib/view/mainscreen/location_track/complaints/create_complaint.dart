@@ -27,6 +27,7 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
   bool _customerError = false;
   DateTime _date = DateTime.now();
   File? _attachment;
+  bool _attachmentIsVideo = false;
 
   @override
   void initState() {
@@ -85,11 +86,36 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
         imageQuality: 70,
         maxWidth: 1600,
       );
-      if (file != null) setState(() => _attachment = File(file.path));
+      if (file != null) {
+        setState(() {
+          _attachment = File(file.path);
+          _attachmentIsVideo = false;
+        });
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not pick image: $e')),
+      );
+    }
+  }
+
+  Future<void> _pickVideo(ImageSource source) async {
+    try {
+      final file = await _picker.pickVideo(
+        source: source,
+        maxDuration: const Duration(minutes: 2),
+      );
+      if (file != null) {
+        setState(() {
+          _attachment = File(file.path);
+          _attachmentIsVideo = true;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not pick video: $e')),
       );
     }
   }
@@ -127,6 +153,28 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
                 onTap: () {
                   Navigator.pop(sheetContext);
                   _pickAttachment(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.videocam_outlined,
+                  color: ComplaintStyle.navy,
+                ),
+                title: const Text('Record video'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickVideo(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.video_library_outlined,
+                  color: ComplaintStyle.navy,
+                ),
+                title: const Text('Choose video from gallery'),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _pickVideo(ImageSource.gallery);
                 },
               ),
             ],
@@ -429,7 +477,7 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
               ),
               SizedBox(height: 8),
               Text(
-                'Add a photo of the issue',
+                'Add a photo or video of the issue',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -451,12 +499,14 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: Image.file(
-            _attachment!,
-            height: 180,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
+          child: _attachmentIsVideo
+              ? _buildVideoPreview()
+              : Image.file(
+                  _attachment!,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
         ),
         Positioned(
           top: 8,
@@ -473,6 +523,43 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildVideoPreview() {
+    final file = _attachment!;
+    final sizeMb = file.lengthSync() / (1024 * 1024);
+    return Container(
+      height: 180,
+      width: double.infinity,
+      color: ComplaintStyle.navy,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.play_circle_outline_rounded,
+            size: 48,
+            color: Colors.white,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            file.path.split('/').last,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Video · ${sizeMb.toStringAsFixed(1)} MB',
+            style: const TextStyle(fontSize: 11.5, color: Colors.white70),
+          ),
+        ],
+      ),
     );
   }
 

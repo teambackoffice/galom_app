@@ -40,8 +40,7 @@ class OrderItem {
   });
 
   double get subtotal => rate * qty;
-  double get taxAmount => subtotal * (taxRate / 100);
-  double get totalPrice => subtotal + taxAmount;
+  double get totalPrice => subtotal;
 
   Map<String, dynamic> toJson() {
     return {
@@ -99,7 +98,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
   String? _selectedCustomer;
   final List<OrderItem> _orderItems = [];
   double _subtotalAmount = 0.0;
-  double _totalTaxAmount = 0.0;
   double _totalAmount = 0.0;
 
   @override
@@ -337,11 +335,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
 
   void _calculateTotal() {
     _subtotalAmount = _orderItems.fold(0.0, (sum, item) => sum + item.subtotal);
-    _totalTaxAmount = _orderItems.fold(
-      0.0,
-      (sum, item) => sum + item.taxAmount,
-    );
-    _totalAmount = _subtotalAmount + _totalTaxAmount;
+    _totalAmount = _subtotalAmount;
     setState(() {});
   }
 
@@ -563,56 +557,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
         ),
         child: Column(
           children: [
-            // Subtotal row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Subtotal',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                Text(
-                  '₹${_subtotalAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8),
-
-            // Tax row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Tax',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                Text(
-                  '₹${_totalTaxAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-
-            Divider(color: Colors.white.withOpacity(0.5), thickness: 1),
-
             // Total row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1779,27 +1723,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        // Tax Badge
-                        if (taxRate > 0)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Text(
-                              'GST: ${taxRate.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ],
@@ -1999,25 +1922,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                          if (taxRate > 0) ...[
-                            SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'GST Rate:',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                                Text(
-                                  '${taxRate.toStringAsFixed(1)}%',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.green.shade700,
                                   ),
                                 ),
                               ],
@@ -2355,28 +2259,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                               fontSize: 14,
                             ),
                           ),
-                          if (item.taxRate > 0)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: Colors.green.shade200,
-                                ),
-                              ),
-                              child: Text(
-                                'GST: ${item.taxRate.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.green.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ],
@@ -2387,24 +2269,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '₹${item.subtotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    if (item.taxAmount > 0) ...[
-                      Text(
-                        '+₹${item.taxAmount.toStringAsFixed(2)} tax',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                     Container(
                       margin: EdgeInsets.only(top: 4),
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
