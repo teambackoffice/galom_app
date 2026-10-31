@@ -24,6 +24,8 @@ class OrderItem {
   final double taxRate;
   final String uom;
   final double conversionFactor;
+  // List price per stock UOM, kept so a manually changed rate can be reset
+  final double? basePrice;
 
   OrderItem({
     required this.item_code,
@@ -34,11 +36,11 @@ class OrderItem {
     required this.taxRate,
     required this.uom,
     required this.conversionFactor,
+    this.basePrice,
   });
 
   double get subtotal => rate * qty;
-  double get taxAmount => subtotal * (taxRate / 100);
-  double get totalPrice => subtotal + taxAmount;
+  double get totalPrice => subtotal;
 
   Map<String, dynamic> toJson() {
     return {
@@ -96,7 +98,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
   String? _selectedCustomer;
   final List<OrderItem> _orderItems = [];
   double _subtotalAmount = 0.0;
-  double _totalTaxAmount = 0.0;
   double _totalAmount = 0.0;
 
   @override
@@ -334,11 +335,7 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
 
   void _calculateTotal() {
     _subtotalAmount = _orderItems.fold(0.0, (sum, item) => sum + item.subtotal);
-    _totalTaxAmount = _orderItems.fold(
-      0.0,
-      (sum, item) => sum + item.taxAmount,
-    );
-    _totalAmount = _subtotalAmount + _totalTaxAmount;
+    _totalAmount = _subtotalAmount;
     setState(() {});
   }
 
@@ -560,56 +557,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
         ),
         child: Column(
           children: [
-            // Subtotal row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Subtotal',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                Text(
-                  '₹${_subtotalAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 8),
-
-            // Tax row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Total Tax',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-                Text(
-                  '₹${_totalTaxAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
-                ),
-              ],
-            ),
-
-            Divider(color: Colors.white.withOpacity(0.5), thickness: 1),
-
             // Total row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1776,27 +1723,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        // Tax Badge
-                        if (taxRate > 0)
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.green.shade200),
-                            ),
-                            child: Text(
-                              'GST: ${taxRate.toStringAsFixed(1)}%',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green.shade700,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ],
@@ -1889,6 +1815,14 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
     // Fallback so the dialog still works if the UOM API fails
     final fallbackUom = UomConversion(uom: item.unit, conversionFactor: 1.0);
     String? selectedUom = editIndex != null ? _orderItems[editIndex].uom : null;
+    // null = use the list price for the selected UOM
+    double? customRate;
+    int rateResets = 0;
+    if (editIndex != null) {
+      final existing = _orderItems[editIndex];
+      final listRate = item.price * existing.conversionFactor;
+      if ((existing.rate - listRate).abs() > 0.001) customRate = existing.rate;
+    }
     uomController.getItemUom(item.name);
 
     showDialog(
@@ -1993,25 +1927,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                               ],
                             ),
                           ],
-                          if (taxRate > 0) ...[
-                            SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'GST Rate:',
-                                  style: TextStyle(fontWeight: FontWeight.w500),
-                                ),
-                                Text(
-                                  '${taxRate.toStringAsFixed(1)}%',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.green.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -2086,7 +2001,11 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             }).toList(),
                             onChanged: (value) {
                               if (value == null) return;
-                              setDialogState(() => selectedUom = value);
+                              setDialogState(() {
+                                selectedUom = value;
+                                customRate = null;
+                                rateResets++;
+                              });
                             },
                           ),
 
@@ -2107,6 +2026,65 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         suffixText: selected.uom,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Rate Input (defaults to list price, editable)
+                    TextFormField(
+                      // Rebuild with the new default when the UOM changes
+                      // or the rate is reset
+                      key: ValueKey('rate-$selectedUom-$rateResets'),
+                      initialValue: (customRate ?? uomRate).toStringAsFixed(2),
+                      enabled: !isUomLoading,
+                      keyboardType: TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      style: TextStyle(fontSize: 18),
+                      onChanged: (value) {
+                        final parsed = double.tryParse(value);
+                        final wasCustom = customRate != null;
+                        customRate = parsed ?? -1;
+                        if (!wasCustom) setDialogState(() {});
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Rate per ${selected.uom}',
+                        labelStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        prefixText: '₹ ',
+                        helperText: customRate != null
+                            ? 'List price: ₹${uomRate.toStringAsFixed(2)}'
+                            : null,
+                        suffixIcon: customRate != null
+                            ? IconButton(
+                                tooltip: 'Reset to list price',
+                                icon: Icon(
+                                  Icons.restart_alt_rounded,
+                                  color: Color(0xFF764BA2),
+                                ),
+                                onPressed: () => setDialogState(() {
+                                  customRate = null;
+                                  rateResets++;
+                                }),
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Color(0xFF764BA2),
+                            width: 2,
+                          ),
+                        ),
                         contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 14,
@@ -2148,16 +2126,27 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                             onPressed: () {
                               final quantity =
                                   double.tryParse(quantityController.text) ?? 0;
+                              final rate = customRate ?? uomRate;
+                              if (rate < 0) {
+                                ScaffoldMessenger.of(this.context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Please enter a valid rate'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
                               if (quantity > 0) {
                                 final orderItem = OrderItem(
                                   item_code: item.name,
                                   item_name: item.itemName,
-                                  rate: uomRate,
+                                  rate: rate,
                                   qty: quantity.toInt(),
                                   taxTemplate: item.taxTemplate,
                                   taxRate: taxRate,
                                   uom: selected.uom,
                                   conversionFactor: selected.conversionFactor,
+                                  basePrice: item.price,
                                 );
 
                                 setState(() {
@@ -2270,28 +2259,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                               fontSize: 14,
                             ),
                           ),
-                          if (item.taxRate > 0)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.green.shade50,
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: Colors.green.shade200,
-                                ),
-                              ),
-                              child: Text(
-                                'GST: ${item.taxRate.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.green.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ],
@@ -2302,24 +2269,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '₹${item.subtotal.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    if (item.taxAmount > 0) ...[
-                      Text(
-                        '+₹${item.taxAmount.toStringAsFixed(2)} tax',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.green.shade600,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
                     Container(
                       margin: EdgeInsets.only(top: 4),
                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -2458,9 +2407,11 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
       name: item.item_code,
       itemName: item.item_name, // ✅ ADD THIS LINE
       // Dialog expects the per-stock-UOM price, so undo the conversion
-      price: item.conversionFactor != 0
-          ? item.rate / item.conversionFactor
-          : item.rate,
+      price:
+          item.basePrice ??
+          (item.conversionFactor != 0
+              ? item.rate / item.conversionFactor
+              : item.rate),
       unit: item.uom,
       taxTemplate: item.taxTemplate,
     );

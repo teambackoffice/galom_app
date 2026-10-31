@@ -16,6 +16,7 @@ class PaySalesInvoiceService {
     required String modeOfPayment,
     String? referenceNumber,
     DateTime? referenceDate,
+    String? description,
   }) async {
     try {
       final sid = await _secureStorage.read(key: 'sid');
@@ -43,6 +44,10 @@ class PaySalesInvoiceService {
         bodyMap["reference_date"] = DateFormat(
           'yyyy-MM-dd',
         ).format(referenceDate);
+      }
+
+      if (description != null && description.trim().isNotEmpty) {
+        bodyMap["description"] = description.trim();
       }
 
       final body = json.encode(bodyMap);

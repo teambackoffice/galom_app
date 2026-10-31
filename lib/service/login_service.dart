@@ -11,8 +11,18 @@ class LoginService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   Future<bool> isLoggedIn() async {
-    final sid = await _secureStorage.read(key: 'sid');
-    return sid != null && sid.isNotEmpty;
+    try {
+      final sid = await _secureStorage.read(key: 'sid');
+      return sid != null && sid.isNotEmpty;
+    } catch (e) {
+      // Stored data can become undecryptable (e.g. restored from backup after
+      // reinstall). Wipe it so the user can log in again instead of hanging.
+      debugPrint('Secure storage read failed: $e');
+      try {
+        await _secureStorage.deleteAll();
+      } catch (_) {}
+      return false;
+    }
   }
 
   Future<bool> login(String username, String password) async {
@@ -79,6 +89,15 @@ class LoginService {
         );
         await _secureStorage.write(key: 'role_profile', value: roleProfile);
         await _secureStorage.write(key: 'roles', value: jsonEncode(roles));
+        // Hint only; get_manager_access stays the source of truth.
+        await _secureStorage.write(
+          key: 'is_manager',
+          value:
+              message['is_manager'] == true ||
+                  roleProfile?.toString().trim().toUpperCase() == 'ADMIN'
+              ? '1'
+              : '0',
+        );
 
         debugPrint('========== STORAGE SUCCESS ==========');
         debugPrint('All values stored successfully');
