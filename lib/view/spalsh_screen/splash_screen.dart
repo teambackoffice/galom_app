@@ -52,7 +52,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     await Future.delayed(const Duration(seconds: 3));
 
     // Check login status
-    final isLoggedIn = await _authService.isLoggedIn();
+    bool isLoggedIn = false;
+    try {
+      isLoggedIn = await _authService.isLoggedIn();
+    } catch (e) {
+      debugPrint('Login check failed: $e');
+    }
 
     if (mounted) {
       Navigator.pushReplacement(

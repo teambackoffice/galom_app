@@ -11,8 +11,18 @@ class LoginService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   Future<bool> isLoggedIn() async {
-    final sid = await _secureStorage.read(key: 'sid');
-    return sid != null && sid.isNotEmpty;
+    try {
+      final sid = await _secureStorage.read(key: 'sid');
+      return sid != null && sid.isNotEmpty;
+    } catch (e) {
+      // Stored data can become undecryptable (e.g. restored from backup after
+      // reinstall). Wipe it so the user can log in again instead of hanging.
+      debugPrint('Secure storage read failed: $e');
+      try {
+        await _secureStorage.deleteAll();
+      } catch (_) {}
+      return false;
+    }
   }
 
   Future<bool> login(String username, String password) async {
