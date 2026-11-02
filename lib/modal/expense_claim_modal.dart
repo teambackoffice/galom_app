@@ -159,3 +159,48 @@ class CreatedExpenseClaim {
         approvalStatus = _s(j['approval_status']),
         totalClaimedAmount = _n(j['total_claimed_amount']);
 }
+
+/// An expense saved on the device only. Saved expenses are later merged and
+/// sent to the server as one claim.
+class SavedExpense {
+  final String id;
+  final DateTime savedAt;
+  final List<NewExpenseLine> lines;
+  final List<String> receiptPaths;
+  final String? remark;
+
+  SavedExpense({
+    required this.id,
+    required this.savedAt,
+    required this.lines,
+    this.receiptPaths = const [],
+    this.remark,
+  });
+
+  double get total => lines.fold(0, (sum, l) => sum + l.amount);
+
+  SavedExpense.fromJson(Map<String, dynamic> j)
+      : id = _s(j['id']),
+        savedAt = _d(j['saved_at']) ?? DateTime.now(),
+        lines = _list(
+          j['lines'],
+          (l) => NewExpenseLine(
+            expenseType: _s(l['expense_type']),
+            amount: _n(l['amount']),
+            expenseDate: l['expense_date'] as String?,
+            description: l['description'] as String?,
+          ),
+        ),
+        receiptPaths = j['receipts'] is List
+            ? (j['receipts'] as List).map((e) => '$e').toList()
+            : const [],
+        remark = j['remark'] as String?;
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'saved_at': savedAt.toIso8601String(),
+        'lines': lines.map((l) => l.toJson()).toList(),
+        'receipts': receiptPaths,
+        if (remark != null) 'remark': remark,
+      };
+}

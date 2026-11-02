@@ -19,6 +19,13 @@ class _LineDraft {
 
   _LineDraft(this.date);
 
+  _LineDraft.fromSaved(NewExpenseLine l)
+    : type = l.expenseType,
+      date = DateTime.tryParse(l.expenseDate ?? '') ?? DateTime.now() {
+    amount.text = l.amount.toString();
+    description.text = l.description ?? '';
+  }
+
   double get value => double.tryParse(amount.text.trim()) ?? 0;
 
   void dispose() {
@@ -28,7 +35,10 @@ class _LineDraft {
 }
 
 class CreateExpenseClaimPage extends StatefulWidget {
-  const CreateExpenseClaimPage({super.key});
+  /// When set, the form edits this expense saved on the device.
+  final SavedExpense? saved;
+
+  const CreateExpenseClaimPage({super.key, this.saved});
 
   @override
   State<CreateExpenseClaimPage> createState() => _CreateExpenseClaimPageState();
@@ -42,12 +52,23 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
   final ImagePicker _picker = ImagePicker();
 
   DateTime _postingDate = DateTime.now();
-  final List<_LineDraft> _lines = [_LineDraft(DateTime.now())];
+  final List<_LineDraft> _lines = [];
   final List<File> _receipts = [];
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    final saved = widget.saved;
+    if (saved != null && saved.lines.isNotEmpty) {
+      _lines.addAll(saved.lines.map(_LineDraft.fromSaved));
+      _receipts.addAll(
+        saved.receiptPaths.map(File.new).where((f) => f.existsSync()),
+      );
+      _remarkController.text = saved.remark ?? '';
+    } else {
+      _lines.add(_LineDraft(DateTime.now()));
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctrl = context.read<ExpenseClaimController>();
       if (ctrl.expenseTypes.isEmpty) ctrl.fetchExpenseTypes();
@@ -166,32 +187,79 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
     );
   }
 
+  List<NewExpenseLine> get _newLines => _lines
+      .map(
+        (l) => NewExpenseLine(
+          expenseType: l.type!,
+          amount: l.value,
+          expenseDate: ExpenseStyle.apiDate(l.date),
+          description: l.description.text.trim().isEmpty
+              ? null
+              : l.description.text.trim(),
+        ),
+      )
+      .toList();
+
+  String? get _remark {
+    final remark = _remarkController.text.trim();
+    return remark.isEmpty ? null : remark;
+  }
+
+  /// Keeps the expense on this device only; nothing is sent to the server.
+  Future<void> _saveForLater() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _isSaving = true);
+    final ctrl = context.read<ExpenseClaimController>();
+    final ok = await ctrl.saveExpense(
+      id: widget.saved?.id,
+      lines: _newLines,
+      remark: _remark,
+      receipts: List.of(_receipts),
+    );
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (ok) {
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Expense saved. Submit all saved expenses together later.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(ctrl.submitError ?? 'Could not save expense'),
+          backgroundColor: ExpenseStyle.rejected,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   Future<void> _submit() async {
     FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final remark = _remarkController.text.trim();
     final ctrl = context.read<ExpenseClaimController>();
     final created = await ctrl.createClaim(
       postingDate: ExpenseStyle.apiDate(_postingDate),
-      remark: remark.isEmpty ? null : remark,
+      remark: _remark,
       receipts: List.of(_receipts),
-      lines: _lines
-          .map(
-            (l) => NewExpenseLine(
-              expenseType: l.type!,
-              amount: l.value,
-              expenseDate: ExpenseStyle.apiDate(l.date),
-              description: l.description.text.trim().isEmpty
-                  ? null
-                  : l.description.text.trim(),
-            ),
-          )
-          .toList(),
+      lines: _newLines,
     );
 
     if (!mounted) return;
     if (created != null) {
+      final saved = widget.saved;
+      if (saved != null) await ctrl.removeSaved(saved.id);
+      if (!mounted) return;
       Navigator.pop(context, created);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -207,18 +275,19 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
   @override
   Widget build(BuildContext context) {
     final ctrl = context.watch<ExpenseClaimController>();
+    final busy = ctrl.isSubmitting || _isSaving;
 
     return Scaffold(
       backgroundColor: ComplaintStyle.background,
-      appBar: const ComplaintAppBar(
-        title: 'New Expense Claim',
-        subtitle: 'Sent to your approver after submitting',
+      appBar: ComplaintAppBar(
+        title: widget.saved == null ? 'New Expense Claim' : 'Saved Expense',
+        subtitle: 'Submit now, or save and submit later together',
       ),
       bottomNavigationBar: _buildBottomBar(ctrl.isSubmitting),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: AbsorbPointer(
-          absorbing: ctrl.isSubmitting,
+          absorbing: busy,
           child: Form(
             key: _formKey,
             child: ListView(
@@ -573,69 +642,102 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Total claim',
-                  style: TextStyle(fontSize: 12, color: ComplaintStyle.muted),
-                ),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    ExpenseStyle.money(_total),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: ComplaintStyle.navy,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 50,
-            child: ElevatedButton(
-              onPressed: isSubmitting ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ComplaintStyle.navy,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: ComplaintStyle.navy.withOpacity(0.6),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 0,
-              ),
-              child: isSubmitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: Colors.white,
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Total claim',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: ComplaintStyle.muted,
                       ),
-                    )
-                  : const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.send_rounded, size: 18),
-                        SizedBox(width: 8),
-                        Text(
-                          'Submit Claim',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
                     ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        ExpenseStyle.money(_total),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: ComplaintStyle.navy,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: isSubmitting || _isSaving ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ComplaintStyle.navy,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: ComplaintStyle.navy.withOpacity(
+                      0.6,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.4,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.send_rounded, size: 18),
+                            SizedBox(width: 8),
+                            Text(
+                              'Submit Now',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: isSubmitting || _isSaving ? null : _saveForLater,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined, size: 20),
+            label: Text(
+              widget.saved == null ? 'Save for later' : 'Update saved expense',
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: ComplaintStyle.navy,
+              minimumSize: const Size.fromHeight(46),
+              side: BorderSide(color: ComplaintStyle.navy.withOpacity(0.3)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
         ],

@@ -331,6 +331,167 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
     return DateFormat('dd MMM yyyy').format(date);
   }
 
+  /// Days since the invoice was created, counted by calendar date.
+  int _daysSince(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.difference(DateTime(date.year, date.month, date.day)).inDays;
+  }
+
+  /// Whole calendar months since [postingDate], plus the leftover days.
+  /// Under a month, `months` is 0 and `days` is the total day count.
+  ({int months, int days}) _invoiceAge(DateTime postingDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var months =
+        (now.year - postingDate.year) * 12 + now.month - postingDate.month;
+    if (now.day < postingDate.day) months--;
+    if (months < 1) return (months: 0, days: _daysSince(postingDate));
+
+    // DateTime normalises overflow, e.g. 31 Jan + 1 month -> 3 Mar.
+    final anniversary = DateTime(
+      postingDate.year,
+      postingDate.month + months,
+      postingDate.day,
+    );
+    final extra = today.difference(anniversary).inDays;
+    return (months: months, days: extra < 0 ? 0 : extra);
+  }
+
+  Widget _buildInvoiceAge(DateTime postingDate) {
+    String plural(int n, String unit) => '$n $unit${n == 1 ? '' : 's'}';
+
+    final totalDays = _daysSince(postingDate);
+    final age = _invoiceAge(postingDate);
+
+    final Color color;
+    final String status;
+    if (totalDays > 60) {
+      color = Colors.red[700]!;
+      status = 'Long pending';
+    } else if (totalDays > 30) {
+      color = Colors.orange[800]!;
+      status = 'Ageing';
+    } else {
+      color = Colors.green[700]!;
+      status = 'Recent';
+    }
+
+    final String bigNumber;
+    final String unit;
+    final String headline;
+    if (totalDays <= 0) {
+      bigNumber = '0';
+      unit = 'DAYS';
+      headline = 'Created today';
+    } else if (age.months == 0) {
+      bigNumber = '${age.days}';
+      unit = age.days == 1 ? 'DAY' : 'DAYS';
+      headline = '${plural(age.days, 'day')} old';
+    } else {
+      bigNumber = '${age.months}';
+      unit = age.months == 1 ? 'MONTH' : 'MONTHS';
+      headline = age.days > 0
+          ? '${plural(age.months, 'month')} ${plural(age.days, 'day')} old'
+          : '${plural(age.months, 'month')} old';
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(10, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        border: Border.all(color: color.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      bigNumber,
+                      style: TextStyle(
+                        fontSize: 20,
+                        height: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      headline,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[850],
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Created on ${_formatDate(postingDate)}',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          // Fills up over 90 days so older invoices stand out at a glance.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (totalDays / 90).clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: color.withOpacity(0.12),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPaymentMethodSelection() {
     return Card(
       child: Padding(
@@ -619,6 +780,8 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
               ),
             ],
           ),
+          SizedBox(height: 12),
+          _buildInvoiceAge(invoice.postingDate),
           SizedBox(height: 12),
           Row(
             children: [

@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:location_tracker_app/modal/expense_claim_modal.dart';
 import 'package:location_tracker_app/service/expense_claim_service.dart';
+import 'package:location_tracker_app/service/saved_expense_store.dart';
 
 class ExpenseClaimController extends ChangeNotifier {
   final ExpenseClaimService _service = ExpenseClaimService();
+  final SavedExpenseStore _store = SavedExpenseStore();
   static const int _pageSize = 20;
 
   String _clean(Object e) => e.toString().replaceFirst('Exception: ', '');
@@ -51,6 +53,11 @@ class ExpenseClaimController extends ChangeNotifier {
 
   bool get isSubmitting => _isSubmitting;
   String? get submitError => _submitError;
+
+  // ── Saved on device (not yet submitted) ───────────────────────────────────
+  List<SavedExpense> savedExpenses = [];
+
+  double get savedTotal => savedExpenses.fold(0, (sum, e) => sum + e.total);
 
   /// Loads the summary card and the first page of claims together.
   Future<void> refresh() async {
@@ -179,5 +186,64 @@ class ExpenseClaimController extends ChangeNotifier {
       _isSubmitting = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadSaved() async {
+    savedExpenses = await _store.load();
+    notifyListeners();
+  }
+
+  /// Saves on the device only. Pass [id] to update an existing entry.
+  Future<bool> saveExpense({
+    String? id,
+    required List<NewExpenseLine> lines,
+    String? remark,
+    List<File> receipts = const [],
+  }) async {
+    try {
+      savedExpenses = await _store.save(
+        id: id,
+        lines: lines,
+        remark: remark,
+        receipts: receipts,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _submitError = 'Could not save expense: ${_clean(e)}';
+      return false;
+    }
+  }
+
+  Future<void> removeSaved(String id) async {
+    savedExpenses = await _store.remove({id});
+    notifyListeners();
+  }
+
+  /// Submits every saved expense as one claim, then clears them.
+  Future<CreatedExpenseClaim?> submitSaved({String? remark}) async {
+    final items = List.of(savedExpenses);
+    if (items.isEmpty) return null;
+
+    final remarks = items
+        .map((e) => e.remark?.trim() ?? '')
+        .where((r) => r.isNotEmpty)
+        .toSet();
+    final receipts = items
+        .expand((e) => e.receiptPaths)
+        .map(File.new)
+        .where((f) => f.existsSync())
+        .toList();
+
+    final created = await createClaim(
+      lines: items.expand((e) => e.lines).toList(),
+      remark: remark ?? (remarks.isEmpty ? null : remarks.join('; ')),
+      receipts: receipts,
+    );
+    if (created != null) {
+      savedExpenses = await _store.remove(items.map((e) => e.id).toSet());
+      notifyListeners();
+    }
+    return created;
   }
 }

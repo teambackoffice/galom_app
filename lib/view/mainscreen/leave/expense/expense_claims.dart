@@ -29,6 +29,7 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
       final ctrl = context.read<ExpenseClaimController>();
       ctrl.setStatusFilter(null);
       ctrl.refresh();
+      ctrl.loadSaved();
     });
   }
 
@@ -38,23 +39,92 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
     super.dispose();
   }
 
-  Future<void> _openCreate() async {
+  Future<void> _openCreate([SavedExpense? saved]) async {
     final created = await Navigator.push<CreatedExpenseClaim>(
       context,
-      MaterialPageRoute(builder: (_) => const CreateExpenseClaimPage()),
+      MaterialPageRoute(builder: (_) => CreateExpenseClaimPage(saved: saved)),
     );
-    if (created != null && mounted) {
+    if (created != null && mounted) _showSubmitted(created);
+  }
+
+  void _showSubmitted(CreatedExpenseClaim created) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Claim ${created.name} submitted for approval '
+          '(${ExpenseStyle.money(created.totalClaimedAmount)})',
+        ),
+        backgroundColor: ExpenseStyle.approved,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _submitSaved(ExpenseClaimController ctrl) async {
+    final count = ctrl.savedExpenses.fold<int>(0, (n, e) => n + e.lines.length);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Submit as one claim?'),
+        content: Text(
+          '$count expense${count == 1 ? '' : 's'} totalling '
+          '${ExpenseStyle.money(ctrl.savedTotal)} will be sent to your '
+          'approver as a single claim.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final created = await ctrl.submitSaved();
+    if (!mounted) return;
+    if (created != null) {
+      _showSubmitted(created);
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Claim ${created.name} submitted for approval '
-            '(${ExpenseStyle.money(created.totalClaimedAmount)})',
-          ),
-          backgroundColor: ExpenseStyle.approved,
+          content: Text(ctrl.submitError ?? 'Failed to submit claim'),
+          backgroundColor: ExpenseStyle.rejected,
           behavior: SnackBarBehavior.floating,
         ),
       );
     }
+  }
+
+  Future<void> _confirmRemoveSaved(
+    ExpenseClaimController ctrl,
+    SavedExpense saved,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete saved expense?'),
+        content: Text(
+          '${ExpenseStyle.money(saved.total)} will be removed from this phone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: TextButton.styleFrom(foregroundColor: ExpenseStyle.rejected),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await ctrl.removeSaved(saved.id);
   }
 
   @override
@@ -87,6 +157,10 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
           children: [
             _buildSummary(ctrl),
+            if (ctrl.savedExpenses.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              _buildSaved(ctrl),
+            ],
             const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 10),
@@ -201,6 +275,179 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Expenses kept on the phone, submitted together as one claim.
+  Widget _buildSaved(ExpenseClaimController ctrl) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ComplaintStyle.card(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: ExpenseStyle.pending.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.save_outlined,
+                  size: 17,
+                  color: ExpenseStyle.pending,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Saved on this phone (${ctrl.savedExpenses.length})',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: ComplaintStyle.navy,
+                      ),
+                    ),
+                    const Text(
+                      'Not submitted yet',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: ComplaintStyle.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                ExpenseStyle.money(ctrl.savedTotal),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: ComplaintStyle.navy,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          for (final e in ctrl.savedExpenses) _savedTile(ctrl, e),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: ctrl.isSubmitting ? null : () => _submitSaved(ctrl),
+              icon: ctrl.isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: const Text('Submit all as one claim'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ComplaintStyle.navy,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: ComplaintStyle.navy.withOpacity(0.6),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _savedTile(ExpenseClaimController ctrl, SavedExpense e) {
+    final first = e.lines.isEmpty ? null : e.lines.first;
+    final title = first == null
+        ? 'Expense'
+        : e.lines.length == 1
+        ? first.expenseType
+        : '${first.expenseType} +${e.lines.length - 1} more';
+    final date = DateTime.tryParse(first?.expenseDate ?? '');
+    final details = [
+      ComplaintStyle.formatDate(date ?? e.savedAt),
+      if (first?.description != null) first!.description!,
+      if (e.receiptPaths.isNotEmpty)
+        '${e.receiptPaths.length} receipt${e.receiptPaths.length == 1 ? '' : 's'}',
+    ].join('  •  ');
+
+    return InkWell(
+      onTap: ctrl.isSubmitting ? null : () => _openCreate(e),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              ExpenseStyle.typeIcon(first?.expenseType ?? ''),
+              size: 20,
+              color: ComplaintStyle.navy,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: ComplaintStyle.navy,
+                    ),
+                  ),
+                  Text(
+                    details,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11.5,
+                      color: ComplaintStyle.muted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              ExpenseStyle.money(e.total),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: ComplaintStyle.navy,
+              ),
+            ),
+            IconButton(
+              onPressed: ctrl.isSubmitting
+                  ? null
+                  : () => _confirmRemoveSaved(ctrl, e),
+              visualDensity: VisualDensity.compact,
+              tooltip: 'Delete',
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                size: 20,
+                color: ExpenseStyle.rejected,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
