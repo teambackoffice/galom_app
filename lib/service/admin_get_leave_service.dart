@@ -19,38 +19,22 @@ class GetAdminLeaveApplicationService {
 
       final headers = {'Authorization': 'token $sid', 'Cookie': 'sid=$sid'};
 
-      print("========== GET ADMIN LEAVE APPLICATION ==========");
-      print("URL: $url");
-      print("Headers: $headers");
 
       final response = await http.get(url, headers: headers);
 
-      print("Status Code: ${response.statusCode}");
-      print("Reason: ${response.reasonPhrase}");
-      print("Response Headers: ${response.headers}");
-      print("Raw Response:");
-      print(response.body);
-      print("===============================================");
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
 
-        print("Decoded JSON:");
-        print(const JsonEncoder.withIndent('  ').convert(decoded));
 
         final model = AdminLeaveApplicationModalClassResponse.fromJson(decoded);
 
-        print("Model Parsed Successfully");
 
         return model;
       } else {
-        print("API Failed with Status Code: ${response.statusCode}");
         return null;
       }
-    } catch (e, stackTrace) {
-      print("Exception: $e");
-      print("StackTrace:");
-      print(stackTrace);
+    } catch (e) {
       return null;
     }
   }

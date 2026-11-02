@@ -26,20 +26,10 @@ class EmployeeTaskService {
       final response = await http.get(url, headers: headers);
 
       // ✅ PRINT COMPLETE RESPONSE
-      print("========== TASK DETAILS API ==========");
-      print("URL: $url");
-      print("Sales Person: $salesPerson");
-      print("SID: $sid");
-      print("Status Code: ${response.statusCode}");
-      print("Reason: ${response.reasonPhrase}");
-      print("Headers: ${response.headers}");
-      print("Raw Body: ${response.body}");
-      print("======================================");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
-        print("Decoded JSON: $data");
 
         if (data is Map<String, dynamic> && data.containsKey('message')) {
           final taskModal = EmployeeTaskModal.fromJson(data);
@@ -55,7 +45,6 @@ class EmployeeTaskService {
         );
       }
     } catch (e) {
-      print("TASK API ERROR: $e");
       rethrow;
     }
   }

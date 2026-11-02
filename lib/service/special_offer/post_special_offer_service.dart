@@ -15,8 +15,6 @@ class SpecialOfferService {
 
     final String? sid = await storage.read(key: "sid");
 
-    print("📡 API Request Initiated");
-    print("➡️ URL: $url");
 
     try {
       var request = http.Request('POST', Uri.parse(url));
@@ -27,29 +25,22 @@ class SpecialOfferService {
         if (sid != null) "Cookie": "sid=$sid",
       });
 
-      print("➡️ Headers Sent: ${request.headers}");
 
       http.StreamedResponse response = await request.send();
       final responseText = await response.stream.bytesToString();
 
-      print("📥 Raw Response Received");
-      print("➡️ Status Code: ${response.statusCode}");
-      print("➡️ Response Body: $responseText");
 
       if (response.statusCode == 200) {
         try {
           final result = jsonDecode(responseText);
           return result;
         } catch (e) {
-          print("❌ JSON Parsing Error: $e");
           return null;
         }
       } else {
-        print("❌ API Error - Status Code: ${response.statusCode}");
         throw Exception("API call failed");
       }
     } catch (e) {
-      print("🔥 Exception in API Call: $e");
       return null;
     }
   }

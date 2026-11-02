@@ -24,19 +24,6 @@ class LogCustomerVisitService {
     try {
       final sid = await _storage.read(key: 'sid');
 
-      print('================ LOG CUSTOMER VISIT ================');
-      print('🚀 API URL: $url');
-      print('📅 Date: $date');
-      print('⏰ Time: $time');
-      print('👤 Customer Name: $customerName');
-      print('📝 Description: $description');
-      print('📍 Latitude: $latitude');
-      print('📍 Longitude: $longitude');
-      print('🏁 Is First Counter: $isFirstCounter');
-      print('🔚 Is Last Counter: $isLastCounter');
-      print('📸 Photo: ${photo?.path ?? "No photo"}');
-      print('🍪 SID: ${sid ?? "NULL"}');
-      print('====================================================');
 
       if (sid == null) {
         throw Exception("Session expired. Please log in again.");
@@ -62,46 +49,24 @@ class LogCustomerVisitService {
         );
       }
 
-      print('📤 REQUEST METHOD: ${request.method}');
-      print('📤 REQUEST URL: ${request.url}');
-      print('📤 REQUEST HEADERS: ${request.headers}');
-      print('📤 REQUEST FIELDS: ${request.fields}');
-      print(
-        '📤 REQUEST FILES: ${request.files.map((file) => {'field': file.field, 'filename': file.filename, 'length': file.length}).toList()}',
-      );
 
-      print('📤 Sending request...');
 
       final streamedResponse = await request.send();
 
-      print('📥 Response received');
 
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('================ API RESPONSE =====================');
-      print('📥 Status Code: ${response.statusCode}');
-      print('📥 Reason Phrase: ${response.reasonPhrase}');
-      print('📥 Response Headers: ${response.headers}');
-      print('📥 Response Body:');
-      print(response.body);
-      print('====================================================');
 
       if (response.statusCode == 200) {
         try {
           final decodedResponse = json.decode(response.body);
 
-          print('✅ Decoded Response:');
-          print(decodedResponse);
 
           return decodedResponse;
         } catch (e) {
-          print('❌ JSON Decode Error: $e');
           throw Exception('Invalid JSON response: ${response.body}');
         }
       } else {
-        print('❌ API FAILED');
-        print('❌ Status: ${response.statusCode}');
-        print('❌ Body: ${response.body}');
 
         throw Exception(
           "Failed to log customer visit. "
@@ -109,13 +74,7 @@ class LogCustomerVisitService {
           "Body: ${response.body}",
         );
       }
-    } catch (e, stackTrace) {
-      print('====================================================');
-      print('❌ ERROR IN LOG CUSTOMER VISIT');
-      print('❌ Error: $e');
-      print('❌ StackTrace:');
-      print(stackTrace);
-      print('====================================================');
+    } catch (e) {
 
       throw Exception("Error logging customer visit: $e");
     }

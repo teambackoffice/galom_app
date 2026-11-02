@@ -53,7 +53,6 @@ class ManagerLeaveService {
     final sid = await _readSid();
 
     if (sid == null || sid.isEmpty) {
-      debugPrint('LEAVE API ERROR: Session ID is missing');
 
       throw const ManagerApiException(
         ManagerService.sessionExpiredMessage,
@@ -72,12 +71,6 @@ class ManagerLeaveService {
       'Cookie': 'sid=$sid',
     };
 
-    debugPrint('\n========== LEAVE API REQUEST ==========');
-    debugPrint('Method: ${post ? 'POST' : 'GET'}');
-    debugPrint('URL: $uri');
-    debugPrint('API Method: $method');
-    debugPrint('Docname: ${docname ?? 'N/A'}');
-    debugPrint('=======================================\n');
 
     http.Response res;
 
@@ -94,21 +87,12 @@ class ManagerLeaveService {
 
       res = await future.timeout(const Duration(seconds: 30));
 
-      debugPrint('\n========== LEAVE API RESPONSE ==========');
-      debugPrint('URL: $uri');
-      debugPrint('Status Code: ${res.statusCode}');
-      debugPrint('Response Headers: ${res.headers}');
-      debugPrint('Raw Response Body:\n${res.body}');
-      debugPrint('========================================\n');
     } on TimeoutException {
-      debugPrint('LEAVE API TIMEOUT: $uri');
 
       throw const ManagerApiException(
         'The server took too long to respond. Please try again.',
       );
-    } catch (e, stackTrace) {
-      debugPrint('LEAVE API NETWORK ERROR: $e');
-      debugPrint('Stack Trace: $stackTrace');
+    } catch (e) {
 
       throw const ManagerApiException(
         'Unable to reach the server. Check your internet connection.',
@@ -118,14 +102,9 @@ class ManagerLeaveService {
     try {
       final parsedResponse = parseResponse(res.statusCode, res.body);
 
-      debugPrint('\n========== PARSED API RESPONSE ==========');
-      debugPrint(const JsonEncoder.withIndent('  ').convert(parsedResponse));
-      debugPrint('=========================================\n');
 
       return parsedResponse;
-    } catch (e, stackTrace) {
-      debugPrint('LEAVE API PARSING ERROR: $e');
-      debugPrint('Stack Trace: $stackTrace');
+    } catch (e) {
       rethrow;
     }
   }

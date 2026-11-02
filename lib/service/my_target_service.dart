@@ -27,16 +27,7 @@ class MyTargetService {
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
     } catch (e) {
-      print('[MyTarget] GET $uri failed: $e');
       throw Exception('Network error. Please check your connection.');
-    }
-
-    print('[MyTarget] GET $uri');
-    print('[MyTarget] Status: ${response.statusCode}');
-    // print() truncates long lines on Android, so print the body in chunks.
-    final raw = response.body;
-    for (var i = 0; i < raw.length; i += 800) {
-      print('[MyTarget] ${raw.substring(i, i + 800 > raw.length ? raw.length : i + 800)}');
     }
 
     dynamic body;

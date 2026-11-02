@@ -87,13 +87,9 @@ class CustomerComplaintService {
         response = await http.Response.fromStream(await multipart.send());
       }
     } catch (e) {
-      print('[Complaint] POST $uri failed: $e');
       throw Exception('Network error. Please check your connection.');
     }
 
-    print('[Complaint] POST $uri');
-    print('[Complaint] Status: ${response.statusCode}');
-    print('[Complaint] ${response.body}');
 
     final data = _unwrap(response);
     if (data is! Map) throw Exception('Unexpected response from server.');
@@ -111,15 +107,7 @@ class CustomerComplaintService {
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
     } catch (e) {
-      print('[Complaint] GET $uri failed: $e');
       throw Exception('Network error. Please check your connection.');
-    }
-
-    print('[Complaint] GET $uri');
-    print('[Complaint] Status: ${response.statusCode}');
-    final raw = response.body;
-    for (var i = 0; i < raw.length; i += 800) {
-      print('[Complaint] ${raw.substring(i, i + 800 > raw.length ? raw.length : i + 800)}');
     }
 
     return _unwrap(response);

@@ -38,46 +38,30 @@ class CreateSalesOrderService {
             .toList(),
       });
 
-      print("📤 Request URL: $url");
-      print("📤 Request Headers: $headers");
-      print("📤 Request Body: $body");
 
       final response = await http
           .post(Uri.parse(url), headers: headers, body: body)
           .timeout(const Duration(seconds: 15));
 
-      print("📥 Response Code: ${response.statusCode}");
-      print("📥 Raw Response Body: ${response.body}");
-      print("📥 Response Headers: ${response.headers}");
 
       Map<String, dynamic>? decoded;
       try {
         decoded = json.decode(response.body);
-        print("📦 Decoded JSON: $decoded");
-      } catch (e) {
-        print("⚠️ JSON Decode Failed: $e");
-      }
+      } catch (_) {}
 
       if (response.statusCode == 200) {
-        print("✅ SUCCESS FULL RESPONSE RETURNED");
         return decoded ?? {"response": response.body};
       } else {
         final friendlyMessage = _mapErrorMessage(response.body);
-        print("❌ ERROR FULL RESPONSE RETURNED");
-        print("❗ Friendly Error: $friendlyMessage");
         throw Exception(friendlyMessage);
       }
-    } on TimeoutException catch (e) {
-      print("⏳ TIMEOUT ERROR: $e");
+    } on TimeoutException {
       throw Exception("Request timed out. Please try again.");
-    } on SocketException catch (e) {
-      print("🌐 NETWORK ERROR: $e");
+    } on SocketException {
       throw Exception("No internet connection. Please check your network.");
-    } on FormatException catch (e) {
-      print("⚠️ FORMAT ERROR: $e");
+    } on FormatException {
       throw Exception("Invalid server response.");
     } catch (e) {
-      print("🔥 UNKNOWN ERROR: $e");
       rethrow;
     }
   }

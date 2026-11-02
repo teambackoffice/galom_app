@@ -38,7 +38,6 @@ class ManagerStockService {
         'The server took too long to respond. Please try again.',
       );
     } catch (e) {
-      debugPrint('Stock API network error: $e');
       throw const ManagerApiException(
         'Unable to reach the server. Check your internet connection.',
       );

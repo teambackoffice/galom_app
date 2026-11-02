@@ -14,7 +14,6 @@ class LocationIntervalService {
       // Read sid from secure storage
       final sid = await _storage.read(key: 'sid');
       if (sid == null) {
-        print("⚠️ SID not found in secure storage.");
         return null;
       }
 
@@ -23,7 +22,6 @@ class LocationIntervalService {
 
       // Prepare and log request
       final uri = Uri.parse(url);
-      print("📡 Request URL: $uri");
 
       final request = http.Request('GET', uri);
       request.headers.addAll(headers);
@@ -31,19 +29,15 @@ class LocationIntervalService {
       // Send request
       final response = await request.send();
 
-      print("📥 Response Code: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final responseBody = await response.stream.bytesToString();
-        print("✅ Response: $responseBody");
 
         return LocationIntervalModal.fromJson(jsonDecode(responseBody));
       } else {
-        print("❌ Error: ${response.reasonPhrase}");
         return null;
       }
     } catch (e) {
-      print("💥 Exception: $e");
       return null;
     }
   }

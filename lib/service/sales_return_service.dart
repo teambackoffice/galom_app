@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -24,13 +23,6 @@ class SalesReturnService {
       ).replace(queryParameters: {'sales_person': salesPersonId});
 
       // ================= REQUEST =================
-      print("========== GET SALES RETURNS ==========");
-      print("URL: $uri");
-      print("SID: $sid");
-      print("Sales Person ID: $salesPersonId");
-      print("Headers:");
-      print({'Content-Type': 'application/json', 'Cookie': 'sid=$sid'});
-      print("=======================================");
       // ===========================================
 
       final response = await http.get(
@@ -39,53 +31,24 @@ class SalesReturnService {
       );
 
       // ================= RESPONSE =================
-      print("========== API RESPONSE ==========");
-      print("Status Code: ${response.statusCode}");
-      print("Reason Phrase: ${response.reasonPhrase}");
-      print("Response Headers:");
-      print(response.headers);
-      print("Response Body:");
-      print(response.body);
-      print("==================================");
       // ============================================
 
       if (response.statusCode == 200) {
         try {
-          final decoded = jsonDecode(response.body);
 
-          print("========== PARSED JSON ==========");
-          print(const JsonEncoder.withIndent('  ').convert(decoded));
-          print("=================================");
 
           return salesReturnModalFromJson(response.body);
-        } catch (e, stackTrace) {
-          print("========== JSON PARSE ERROR ==========");
-          print("Error: $e");
-          print("StackTrace:");
-          print(stackTrace);
-          print("======================================");
+        } catch (e) {
 
           throw Exception('Failed to parse response: $e');
         }
       } else {
-        print("========== HTTP ERROR ==========");
-        print("Status Code: ${response.statusCode}");
-        print("Reason Phrase: ${response.reasonPhrase}");
-        print("Response Body:");
-        print(response.body);
-        print("================================");
 
         throw Exception(
           'Failed to load sales returns. Code: ${response.statusCode}\nResponse: ${response.body}',
         );
       }
-    } catch (e, stackTrace) {
-      print("========== EXCEPTION ==========");
-      print("Error: $e");
-      print("Type: ${e.runtimeType}");
-      print("StackTrace:");
-      print(stackTrace);
-      print("================================");
+    } catch (e) {
 
       rethrow;
     }

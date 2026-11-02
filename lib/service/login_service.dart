@@ -1,7 +1,6 @@
 // services/auth_service.dart
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:location_tracker_app/config/api_constant.dart';
@@ -17,7 +16,6 @@ class LoginService {
     } catch (e) {
       // Stored data can become undecryptable (e.g. restored from backup after
       // reinstall). Wipe it so the user can log in again instead of hanging.
-      debugPrint('Secure storage read failed: $e');
       try {
         await _secureStorage.deleteAll();
       } catch (_) {}
@@ -29,28 +27,17 @@ class LoginService {
     final url = Uri.parse('$baseUrl?usr=$username&pwd=$password');
 
     try {
-      debugPrint('========== LOGIN API REQUEST ==========');
-      debugPrint('URL: $url');
-      debugPrint('Username: $username');
-      debugPrint('=======================================');
 
       final response = await http.post(url);
 
-      debugPrint('========== LOGIN API RESPONSE ==========');
-      debugPrint('Status Code: ${response.statusCode}');
-      debugPrint('Response Headers: ${response.headers}');
-      debugPrint('Response Body: ${response.body}');
-      debugPrint('========================================');
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
 
-        debugPrint('Parsed Response Data: $responseData');
 
         final fullName = responseData['full_name'];
         final message = responseData['message'];
 
-        debugPrint('Message Object: $message');
 
         final apiKey = message['api_key'];
         final sid = message['sid'];
@@ -62,18 +49,6 @@ class LoginService {
         final salesPersonId = message['sales_person_id'];
         final roleProfile = message['role_profile_name'];
 
-        debugPrint('========== EXTRACTED VALUES ==========');
-        debugPrint('Full Name: $fullName');
-        debugPrint('API Key: $apiKey');
-        debugPrint('SID: $sid');
-        debugPrint('Branch: $branch');
-        debugPrint('Roles: $roles');
-        debugPrint('Email: $email');
-        debugPrint('Employee ID: $empId');
-        debugPrint('Employee Name: $empName');
-        debugPrint('Sales Person ID: $salesPersonId');
-        debugPrint('Role profile is $roleProfile');
-        debugPrint('======================================');
 
         // Store values in secure storage
         await _secureStorage.write(key: 'full_name', value: fullName);
@@ -99,25 +74,13 @@ class LoginService {
               : '0',
         );
 
-        debugPrint('========== STORAGE SUCCESS ==========');
-        debugPrint('All values stored successfully');
-        debugPrint('=====================================');
 
         return message['success_key'] == 1;
       } else {
-        debugPrint('========== LOGIN FAILED ==========');
-        debugPrint('Reason: Non-200 status code');
-        debugPrint('Status Code: ${response.statusCode}');
-        debugPrint('Response Body: ${response.body}');
-        debugPrint('==================================');
 
         return false;
       }
-    } catch (e, stackTrace) {
-      debugPrint('========== LOGIN EXCEPTION ==========');
-      debugPrint('Error: $e');
-      debugPrint('StackTrace: $stackTrace');
-      debugPrint('=====================================');
+    } catch (e) {
 
       return false;
     }
@@ -126,10 +89,8 @@ class LoginService {
   Future<String?> getFullName() async {
     try {
       final name = await _secureStorage.read(key: 'full_name');
-      debugPrint('Retrieved Full Name: $name');
       return name;
     } catch (e) {
-      debugPrint('Error reading full_name: $e');
       return null;
     }
   }
@@ -137,10 +98,8 @@ class LoginService {
   Future<String?> getApiKey() async {
     try {
       final key = await _secureStorage.read(key: 'api_key');
-      debugPrint('Retrieved API Key: $key');
       return key;
     } catch (e) {
-      debugPrint('Error reading api_key: $e');
       return null;
     }
   }
@@ -154,7 +113,6 @@ class LoginService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error reading roles: $e');
       return [];
     }
   }
@@ -162,22 +120,15 @@ class LoginService {
   Future<String?> getRoleProfile() async {
     try {
       final roleProfile = await _secureStorage.read(key: 'role_profile');
-      debugPrint('Retrieved Role Profile: $roleProfile');
       return roleProfile;
     } catch (e) {
-      debugPrint('Error reading role_profile: $e');
       return null;
     }
   }
 
   Future<void> logout() async {
     try {
-      debugPrint('========== LOGOUT ==========');
       await _secureStorage.deleteAll();
-      debugPrint('All secure storage data deleted');
-      debugPrint('============================');
-    } catch (e) {
-      debugPrint('Logout Error: $e');
-    }
+    } catch (_) {}
   }
 }

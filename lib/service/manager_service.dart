@@ -89,7 +89,6 @@ class ManagerService {
         'Unable to reach the server. Check your internet connection.',
       );
     } catch (e) {
-      debugPrint('Manager API [$method] network error: $e');
       throw const ManagerApiException(
         'Unable to reach the server. Check your internet connection.',
       );
@@ -123,7 +122,6 @@ class ManagerService {
         ? message.trim()
         : null;
 
-    debugPrint('Manager API [$method] failed ($statusCode)');
 
     if ((statusCode == 401 || statusCode == 403) && !hasEnvelope) {
       throw ManagerApiException(

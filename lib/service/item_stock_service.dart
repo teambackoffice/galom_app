@@ -11,26 +11,16 @@ class ItemStockService {
 
   Future<ItemStockModal> getAllStockItems() async {
     try {
-      print("🌍 Calling API => $baseUrl");
 
       final response = await http.get(Uri.parse(baseUrl));
 
-      print("📩 RESPONSE RECEIVED");
-      print("Status Code => ${response.statusCode}");
-      print("Headers => ${response.headers}");
 
       if (response.statusCode == 200) {
-        print("✅ SUCCESS BODY => ${response.body}");
         return ItemStockModal.fromJson(json.decode(response.body));
       } else {
-        print("❌ API ERROR");
-        print("Reason => ${response.reasonPhrase}");
-        print("Error Body => ${response.body}");
         throw Exception("API Error: ${response.statusCode}");
       }
     } catch (e) {
-      print("🔥 EXCEPTION OCCURRED");
-      print("Error => $e");
       rethrow; // keeps throwing so controller can handle
     }
   }

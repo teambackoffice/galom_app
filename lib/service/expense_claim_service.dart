@@ -110,13 +110,9 @@ class ExpenseClaimService {
         response = await http.Response.fromStream(await req.send());
       }
     } catch (e) {
-      print('[Expense] POST $uri failed: $e');
       throw Exception('Network error. Please check your connection.');
     }
 
-    print('[Expense] POST $uri');
-    print('[Expense] Status: ${response.statusCode}');
-    print('[Expense] ${response.body}');
 
     final data = _unwrap(response);
     if (data is! Map) throw Exception('Unexpected response from server.');
@@ -135,15 +131,7 @@ class ExpenseClaimService {
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
     } catch (e) {
-      print('[Expense] GET $uri failed: $e');
       throw Exception('Network error. Please check your connection.');
-    }
-
-    print('[Expense] GET $uri');
-    print('[Expense] Status: ${response.statusCode}');
-    final raw = response.body;
-    for (var i = 0; i < raw.length; i += 800) {
-      print('[Expense] ${raw.substring(i, i + 800 > raw.length ? raw.length : i + 800)}');
     }
 
     return _unwrap(response);
