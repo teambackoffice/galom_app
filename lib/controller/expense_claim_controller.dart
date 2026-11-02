@@ -235,8 +235,18 @@ class ExpenseClaimController extends ChangeNotifier {
         .where((f) => f.existsSync())
         .toList();
 
+    // A photo the OS removed is dropped rather than failing the upload.
+    final lines = items
+        .expand((e) => e.lines)
+        .map(
+          (l) => l.receiptPath == null || File(l.receiptPath!).existsSync()
+              ? l
+              : l.withReceipt(null),
+        )
+        .toList();
+
     final created = await createClaim(
-      lines: items.expand((e) => e.lines).toList(),
+      lines: lines,
       remark: remark ?? (remarks.isEmpty ? null : remarks.join('; ')),
       receipts: receipts,
     );

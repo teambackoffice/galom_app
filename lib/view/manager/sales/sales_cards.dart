@@ -23,6 +23,7 @@ class _TxnCard extends StatelessWidget {
     this.detail,
     this.note,
     this.noteColor,
+    this.badge,
     this.onTap,
   });
 
@@ -36,6 +37,7 @@ class _TxnCard extends StatelessWidget {
   final String? detail;
   final String? note;
   final Color? noteColor;
+  final Widget? badge;
   final VoidCallback? onTap;
 
   @override
@@ -75,6 +77,10 @@ class _TxnCard extends StatelessWidget {
                   style: MText.meta,
                 ),
               ),
+              if (badge != null) ...[
+                const SizedBox(width: MSpace.sm),
+                badge!,
+              ],
               const SizedBox(width: MSpace.sm),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 130),
@@ -134,6 +140,9 @@ class SalesOrderCard extends StatelessWidget {
           : 'Deliver by ${MFormat.shortDate(o.deliveryDate)}',
       note: o.docstatus == 1
           ? '${MFormat.percent(o.perDelivered)} delivered'
+          : null,
+      badge: o.docstatus == 1
+          ? DispatchChip(o.customDispatch, dense: true)
           : null,
     );
   }

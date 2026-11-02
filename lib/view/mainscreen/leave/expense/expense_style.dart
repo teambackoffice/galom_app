@@ -58,7 +58,10 @@ class ExpenseStyle {
     if (t.contains('food') || t.contains('meal')) {
       return Icons.restaurant_outlined;
     }
-    if (t.contains('hotel') || t.contains('stay') || t.contains('lodg')) {
+    if (t.contains('hotel') ||
+        t.contains('room') ||
+        t.contains('stay') ||
+        t.contains('lodg')) {
       return Icons.hotel_outlined;
     }
     if (t.contains('phone') || t.contains('mobile') || t.contains('call')) {

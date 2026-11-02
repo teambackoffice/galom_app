@@ -70,6 +70,11 @@ class ManagerTransactionDetailScreen extends StatelessWidget {
         InfoRow('Salesperson', _salesPerson(d)),
         InfoRow('Order date', MFormat.date(d.transactionDate)),
         InfoRow('Delivery date', MFormat.date(d.deliveryDate)),
+        InfoRow(
+          'Dispatch',
+          d.customDispatch ? 'Yes' : 'No',
+          valueColor: d.customDispatch ? MColors.green : null,
+        ),
         ..._commonRows(d),
       ],
     ),

@@ -3,6 +3,7 @@ import 'package:location_tracker_app/controller/expense_claim_controller.dart';
 import 'package:location_tracker_app/modal/expense_claim_modal.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/expense/create_expense_claim.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_claim_details.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_feedback.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_style.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/complaints/complaint_style.dart';
 import 'package:provider/provider.dart';
@@ -48,54 +49,50 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
   }
 
   void _showSubmitted(CreatedExpenseClaim created) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Claim ${created.name} submitted for approval '
-          '(${ExpenseStyle.money(created.totalClaimedAmount)})',
-        ),
-        backgroundColor: ExpenseStyle.approved,
-        behavior: SnackBarBehavior.floating,
-      ),
+    showExpenseSnack(
+      context,
+      type: ExpenseSnackType.success,
+      title: 'Claim submitted',
+      message:
+          '${created.name}  •  ${ExpenseStyle.money(created.totalClaimedAmount)} '
+          'sent for approval',
     );
   }
 
   Future<void> _submitSaved(ExpenseClaimController ctrl) async {
     final count = ctrl.savedExpenses.fold<int>(0, (n, e) => n + e.lines.length);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Submit as one claim?'),
-        content: Text(
-          '$count expense${count == 1 ? '' : 's'} totalling '
-          '${ExpenseStyle.money(ctrl.savedTotal)} will be sent to your '
-          'approver as a single claim.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Submit'),
-          ),
+    final photos = ctrl.savedExpenses.fold<int>(
+      0,
+      (n, e) => n + e.allFilePaths.length,
+    );
+    final ok = await showExpenseConfirm(
+      context,
+      icon: Icons.send_rounded,
+      title: 'Submit as one claim?',
+      message:
+          'All saved expenses will be combined and sent to your approver '
+          'as a single claim.',
+      confirmLabel: 'Submit',
+      details: ExpenseDialogSummary(
+        rows: [
+          ('Expenses', '$count'),
+          if (photos > 0) ('Receipt photos', '$photos'),
         ],
+        total: ('Total', ExpenseStyle.money(ctrl.savedTotal)),
       ),
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
 
     final created = await ctrl.submitSaved();
     if (!mounted) return;
     if (created != null) {
       _showSubmitted(created);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ctrl.submitError ?? 'Failed to submit claim'),
-          backgroundColor: ExpenseStyle.rejected,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showExpenseSnack(
+        context,
+        type: ExpenseSnackType.error,
+        title: 'Couldn\'t submit claim',
+        message: ctrl.submitError ?? 'Please try again.',
       );
     }
   }
@@ -104,27 +101,26 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
     ExpenseClaimController ctrl,
     SavedExpense saved,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete saved expense?'),
-        content: Text(
-          '${ExpenseStyle.money(saved.total)} will be removed from this phone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: ExpenseStyle.rejected),
-            child: const Text('Delete'),
-          ),
+    final first = saved.lines.isEmpty ? null : saved.lines.first;
+    final ok = await showExpenseConfirm(
+      context,
+      icon: Icons.delete_outline_rounded,
+      color: ExpenseStyle.rejected,
+      title: 'Delete saved expense?',
+      message: 'It will be removed from this phone. This can\'t be undone.',
+      confirmLabel: 'Delete',
+      details: ExpenseDialogSummary(
+        rows: [
+          if (first != null) ('Type', first.typeLabel),
+          if (saved.lines.length > 1) ('Lines', '${saved.lines.length}'),
         ],
+        total: ('Amount', ExpenseStyle.money(saved.total)),
       ),
     );
-    if (ok == true) await ctrl.removeSaved(saved.id);
+    if (!ok) return;
+    await ctrl.removeSaved(saved.id);
+    if (!mounted) return;
+    showExpenseSnack(context, title: 'Saved expense deleted');
   }
 
   @override
@@ -378,14 +374,14 @@ class _ExpenseClaimsPageState extends State<ExpenseClaimsPage> {
     final title = first == null
         ? 'Expense'
         : e.lines.length == 1
-        ? first.expenseType
-        : '${first.expenseType} +${e.lines.length - 1} more';
+        ? first.typeLabel
+        : '${first.typeLabel} +${e.lines.length - 1} more';
     final date = DateTime.tryParse(first?.expenseDate ?? '');
     final details = [
       ComplaintStyle.formatDate(date ?? e.savedAt),
       if (first?.description != null) first!.description!,
-      if (e.receiptPaths.isNotEmpty)
-        '${e.receiptPaths.length} receipt${e.receiptPaths.length == 1 ? '' : 's'}',
+      if (e.allFilePaths.isNotEmpty)
+        '${e.allFilePaths.length} photo${e.allFilePaths.length == 1 ? '' : 's'}',
     ].join('  •  ');
 
     return InkWell(

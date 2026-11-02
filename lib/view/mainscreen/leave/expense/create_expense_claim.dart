@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:location_tracker_app/controller/expense_claim_controller.dart';
 import 'package:location_tracker_app/modal/expense_claim_modal.dart';
+import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_feedback.dart';
 import 'package:location_tracker_app/view/mainscreen/leave/expense/expense_style.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/complaints/complaint_style.dart';
 import 'package:provider/provider.dart';
@@ -16,6 +17,8 @@ class _LineDraft {
   DateTime date;
   final amount = TextEditingController();
   final description = TextEditingController();
+  final otherType = TextEditingController();
+  File? receipt;
 
   _LineDraft(this.date);
 
@@ -24,13 +27,19 @@ class _LineDraft {
       date = DateTime.tryParse(l.expenseDate ?? '') ?? DateTime.now() {
     amount.text = l.amount.toString();
     description.text = l.description ?? '';
+    otherType.text = l.otherExpenseType ?? '';
+    final path = l.receiptPath;
+    if (path != null && File(path).existsSync()) receipt = File(path);
   }
+
+  bool get isOthers => type == 'Others';
 
   double get value => double.tryParse(amount.text.trim()) ?? 0;
 
   void dispose() {
     amount.dispose();
     description.dispose();
+    otherType.dispose();
   }
 }
 
@@ -45,15 +54,12 @@ class CreateExpenseClaimPage extends StatefulWidget {
 }
 
 class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
-  static const int _maxReceipts = 10;
-
   final _formKey = GlobalKey<FormState>();
   final _remarkController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
 
   DateTime _postingDate = DateTime.now();
   final List<_LineDraft> _lines = [];
-  final List<File> _receipts = [];
   bool _isSaving = false;
 
   @override
@@ -62,9 +68,6 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
     final saved = widget.saved;
     if (saved != null && saved.lines.isNotEmpty) {
       _lines.addAll(saved.lines.map(_LineDraft.fromSaved));
-      _receipts.addAll(
-        saved.receiptPaths.map(File.new).where((f) => f.existsSync()),
-      );
       _remarkController.text = saved.remark ?? '';
     } else {
       _lines.add(_LineDraft(DateTime.now()));
@@ -109,45 +112,31 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
     setState(() => _lines.removeAt(index).dispose());
   }
 
-  Future<void> _addReceipt(ImageSource source) async {
+  /// One receipt photo per expense line, sent as `receipt_<n>`.
+  Future<void> _pickLineReceipt(_LineDraft line) async {
+    FocusScope.of(context).unfocus();
+    final source = await _chooseSource();
+    if (source == null) return;
     try {
-      if (source == ImageSource.gallery) {
-        final files = await _picker.pickMultiImage(
-          imageQuality: 70,
-          maxWidth: 1600,
-        );
-        if (files.isEmpty) return;
-        setState(() {
-          for (final f in files) {
-            if (_receipts.length >= _maxReceipts) break;
-            _receipts.add(File(f.path));
-          }
-        });
-      } else {
-        final file = await _picker.pickImage(
-          source: source,
-          imageQuality: 70,
-          maxWidth: 1600,
-        );
-        if (file != null) setState(() => _receipts.add(File(file.path)));
-      }
+      final file = await _picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1600,
+      );
+      if (file != null) setState(() => line.receipt = File(file.path));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not pick image: $e')),
+      showExpenseSnack(
+        context,
+        type: ExpenseSnackType.error,
+        title: 'Couldn\'t add photo',
+        message: '$e',
       );
     }
   }
 
-  void _showReceiptOptions() {
-    FocusScope.of(context).unfocus();
-    if (_receipts.length >= _maxReceipts) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You can attach up to 10 receipts')),
-      );
-      return;
-    }
-    showModalBottomSheet(
+  Future<ImageSource?> _chooseSource() {
+    return showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -164,10 +153,7 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
                   color: ComplaintStyle.navy,
                 ),
                 title: const Text('Take photo'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _addReceipt(ImageSource.camera);
-                },
+                onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
               ),
               ListTile(
                 leading: const Icon(
@@ -175,10 +161,7 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
                   color: ComplaintStyle.navy,
                 ),
                 title: const Text('Choose from gallery'),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _addReceipt(ImageSource.gallery);
-                },
+                onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
               ),
             ],
           ),
@@ -191,6 +174,8 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
       .map(
         (l) => NewExpenseLine(
           expenseType: l.type!,
+          otherExpenseType: l.isOthers ? l.otherType.text.trim() : null,
+          receiptPath: l.receipt?.path,
           amount: l.value,
           expenseDate: ExpenseStyle.apiDate(l.date),
           description: l.description.text.trim().isEmpty
@@ -216,29 +201,24 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
       id: widget.saved?.id,
       lines: _newLines,
       remark: _remark,
-      receipts: List.of(_receipts),
     );
     if (!mounted) return;
     setState(() => _isSaving = false);
 
-    final messenger = ScaffoldMessenger.of(context);
     if (ok) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Expense saved. Submit all saved expenses together later.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showExpenseSnack(
+        context,
+        type: ExpenseSnackType.success,
+        title: 'Expense saved on this phone',
+        message: 'Submit all saved expenses together as one claim later.',
       );
       Navigator.pop(context);
     } else {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(ctrl.submitError ?? 'Could not save expense'),
-          backgroundColor: ExpenseStyle.rejected,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showExpenseSnack(
+        context,
+        type: ExpenseSnackType.error,
+        title: 'Couldn\'t save expense',
+        message: ctrl.submitError,
       );
     }
   }
@@ -251,7 +231,6 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
     final created = await ctrl.createClaim(
       postingDate: ExpenseStyle.apiDate(_postingDate),
       remark: _remark,
-      receipts: List.of(_receipts),
       lines: _newLines,
     );
 
@@ -262,12 +241,11 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
       if (!mounted) return;
       Navigator.pop(context, created);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(ctrl.submitError ?? 'Failed to submit claim'),
-          backgroundColor: ExpenseStyle.rejected,
-          behavior: SnackBarBehavior.floating,
-        ),
+      showExpenseSnack(
+        context,
+        type: ExpenseSnackType.error,
+        title: 'Couldn\'t submit claim',
+        message: ctrl.submitError ?? 'Please try again.',
       );
     }
   }
@@ -344,15 +322,6 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
                     textStyle: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
-                const SizedBox(height: 18),
-                _card(
-                  icon: Icons.receipt_rounded,
-                  title: 'Receipts',
-                  trailing: _receipts.isEmpty
-                      ? 'Optional'
-                      : '${_receipts.length}/$_maxReceipts',
-                  children: [_buildReceipts()],
-                ),
               ],
             ),
           ),
@@ -410,6 +379,17 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
           const SizedBox(height: 14),
           _label('Expense Type', required: true),
           _buildTypeDropdown(line, ctrl),
+          if (line.isOthers) ...[
+            const SizedBox(height: 16),
+            _label('What was this expense?', required: true),
+            _textField(
+              controller: line.otherType,
+              hint: 'e.g. Parking',
+              validator: (v) => (v ?? '').trim().isEmpty
+                  ? 'Enter what this expense was'
+                  : null,
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,8 +442,87 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
             controller: line.description,
             hint: 'e.g. Bus fare to Kozhikode',
           ),
+          const SizedBox(height: 16),
+          _label('Receipt'),
+          _buildLineReceipt(line),
         ],
       ),
+    );
+  }
+
+  Widget _buildLineReceipt(_LineDraft line) {
+    final file = line.receipt;
+    if (file == null) {
+      return InkWell(
+        onTap: () => _pickLineReceipt(line),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+          decoration: BoxDecoration(
+            color: ComplaintStyle.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: ComplaintStyle.border),
+          ),
+          child: const Row(
+            children: [
+              Icon(
+                Icons.add_a_photo_outlined,
+                size: 18,
+                color: ComplaintStyle.navy,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Add receipt photo',
+                style: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: ComplaintStyle.navy,
+                ),
+              ),
+              Spacer(),
+              Text(
+                'Optional',
+                style: TextStyle(fontSize: 11.5, color: ComplaintStyle.muted),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.file(file, width: 64, height: 64, fit: BoxFit.cover),
+        ),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text(
+            'Receipt attached',
+            style: TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w600,
+              color: ExpenseStyle.approved,
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => _pickLineReceipt(line),
+          style: TextButton.styleFrom(foregroundColor: ComplaintStyle.navy),
+          child: const Text('Change'),
+        ),
+        IconButton(
+          onPressed: () => setState(() => line.receipt = null),
+          tooltip: 'Remove receipt',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(
+            Icons.delete_outline_rounded,
+            size: 20,
+            color: ExpenseStyle.rejected,
+          ),
+        ),
+      ],
     );
   }
 
@@ -546,81 +605,6 @@ class _CreateExpenseClaimPageState extends State<CreateExpenseClaimPage> {
           .toList(),
       onChanged: (v) => setState(() => line.type = v),
       validator: (v) => v == null ? 'Select an expense type' : null,
-    );
-  }
-
-  Widget _buildReceipts() {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        for (var i = 0; i < _receipts.length; i++)
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.file(
-                  _receipts[i],
-                  width: 84,
-                  height: 84,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: GestureDetector(
-                  onTap: () => setState(() => _receipts.removeAt(i)),
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: Colors.black54,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        if (_receipts.length < _maxReceipts)
-          InkWell(
-            onTap: _showReceiptOptions,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 84,
-              height: 84,
-              decoration: BoxDecoration(
-                color: ComplaintStyle.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ComplaintStyle.border),
-              ),
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add_a_photo_outlined,
-                    size: 24,
-                    color: ComplaintStyle.navy,
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Add',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: ComplaintStyle.navy,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-      ],
     );
   }
 

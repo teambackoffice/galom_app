@@ -1,4 +1,14 @@
 String _s(dynamic v) => v == null ? '' : v.toString();
+String? _sOrNull(dynamic v) {
+  final s = _s(v).trim();
+  return s.isEmpty ? null : s;
+}
+
+/// The line's type for display: the typed-in name when the type is Others.
+String expenseTypeLabel(String type, String? otherType) =>
+    type == 'Others' && otherType != null && otherType.isNotEmpty
+        ? otherType
+        : type;
 double _n(dynamic v) =>
     v is num ? v.toDouble() : double.tryParse('${v ?? ''}') ?? 0;
 int _i(dynamic v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
@@ -46,16 +56,22 @@ class ExpenseClaim {
 class ExpenseLine {
   final DateTime? expenseDate;
   final String expenseType;
+  final String? otherExpenseType;
   final String description;
   final double amount;
   final double sanctionedAmount;
+  final String? receipt; // private file_url of this line's receipt
 
   ExpenseLine.fromJson(Map<String, dynamic> j)
       : expenseDate = _d(j['expense_date']),
         expenseType = _s(j['expense_type']),
+        otherExpenseType = _sOrNull(j['other_expense_type']),
         description = _s(j['description']),
         amount = _n(j['amount']),
-        sanctionedAmount = _n(j['sanctioned_amount']);
+        sanctionedAmount = _n(j['sanctioned_amount']),
+        receipt = _sOrNull(j['receipt']);
+
+  String get typeLabel => expenseTypeLabel(expenseType, otherExpenseType);
 }
 
 class ExpenseAttachment {
@@ -129,19 +145,37 @@ class ExpenseSummary {
 
 class NewExpenseLine {
   final String expenseType;
+  final String? otherExpenseType; // required when expenseType == 'Others'
   final double amount;
   final String? expenseDate; // YYYY-MM-DD
   final String? description;
 
+  /// Local photo sent as `receipt_<n>`; never part of [toJson].
+  final String? receiptPath;
+
   NewExpenseLine({
     required this.expenseType,
     required this.amount,
+    this.otherExpenseType,
     this.expenseDate,
     this.description,
+    this.receiptPath,
   });
+
+  String get typeLabel => expenseTypeLabel(expenseType, otherExpenseType);
+
+  NewExpenseLine withReceipt(String? path) => NewExpenseLine(
+        expenseType: expenseType,
+        amount: amount,
+        otherExpenseType: otherExpenseType,
+        expenseDate: expenseDate,
+        description: description,
+        receiptPath: path,
+      );
 
   Map<String, dynamic> toJson() => {
         'expense_type': expenseType,
+        if (expenseType == 'Others') 'other_expense_type': otherExpenseType,
         'amount': amount,
         if (expenseDate != null) 'expense_date': expenseDate,
         if (description != null) 'description': description,
@@ -179,6 +213,12 @@ class SavedExpense {
 
   double get total => lines.fold(0, (sum, l) => sum + l.amount);
 
+  /// Every local photo: per-line receipts plus claim-level attachments.
+  List<String> get allFilePaths => [
+        ...lines.map((l) => l.receiptPath).whereType<String>(),
+        ...receiptPaths,
+      ];
+
   SavedExpense.fromJson(Map<String, dynamic> j)
       : id = _s(j['id']),
         savedAt = _d(j['saved_at']) ?? DateTime.now(),
@@ -186,9 +226,11 @@ class SavedExpense {
           j['lines'],
           (l) => NewExpenseLine(
             expenseType: _s(l['expense_type']),
+            otherExpenseType: _sOrNull(l['other_expense_type']),
             amount: _n(l['amount']),
-            expenseDate: l['expense_date'] as String?,
-            description: l['description'] as String?,
+            expenseDate: _sOrNull(l['expense_date']),
+            description: _sOrNull(l['description']),
+            receiptPath: _sOrNull(l['receipt_path']),
           ),
         ),
         receiptPaths = j['receipts'] is List
@@ -199,7 +241,12 @@ class SavedExpense {
   Map<String, dynamic> toJson() => {
         'id': id,
         'saved_at': savedAt.toIso8601String(),
-        'lines': lines.map((l) => l.toJson()).toList(),
+        'lines': lines
+            .map((l) => {
+                  ...l.toJson(),
+                  if (l.receiptPath != null) 'receipt_path': l.receiptPath,
+                })
+            .toList(),
         'receipts': receiptPaths,
         if (remark != null) 'remark': remark,
       };

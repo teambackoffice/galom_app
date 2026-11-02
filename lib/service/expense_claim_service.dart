@@ -51,6 +51,9 @@ class ExpenseClaimService {
     return ExpenseSummary.fromJson(Map<String, dynamic>.from(data));
   }
 
+  /// Types the app does not offer, matched case-insensitively.
+  static const Set<String> _hiddenTypes = {'calls', 'medical'};
+
   Future<List<String>> getExpenseTypes() async {
     final data = await _get('get_expense_claim_types', const {});
     final raw = data is Map ? data['types'] : null;
@@ -59,10 +62,13 @@ class ExpenseClaimService {
         .whereType<Map>()
         .map((e) => '${e['name'] ?? ''}')
         .where((n) => n.isNotEmpty)
+        .where((n) => !_hiddenTypes.contains(n.trim().toLowerCase()))
         .toList();
   }
 
-  /// Sends JSON when there are no receipts, multipart/form-data otherwise.
+  /// Sends JSON when there are no photos, multipart/form-data otherwise.
+  /// Each line's photo goes as `receipt_<index>`; [receipts] are extra
+  /// files attached to the claim as a whole.
   Future<CreatedExpenseClaim> createClaim({
     required List<NewExpenseLine> lines,
     String? postingDate,
@@ -75,7 +81,8 @@ class ExpenseClaimService {
 
     final http.Response response;
     try {
-      if (receipts.isEmpty) {
+      final hasLineReceipts = lines.any((l) => l.receiptPath != null);
+      if (receipts.isEmpty && !hasLineReceipts) {
         response = await http.post(
           uri,
           headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
@@ -91,6 +98,12 @@ class ExpenseClaimService {
           ..fields['expenses'] = jsonEncode(lineJson);
         if (postingDate != null) req.fields['posting_date'] = postingDate;
         if (remark != null) req.fields['remark'] = remark;
+        for (var i = 0; i < lines.length; i++) {
+          final path = lines[i].receiptPath;
+          if (path != null) {
+            req.files.add(await http.MultipartFile.fromPath('receipt_$i', path));
+          }
+        }
         for (final file in receipts) {
           req.files.add(await http.MultipartFile.fromPath('receipts', file.path));
         }

@@ -92,6 +92,57 @@ class StatusChip extends StatelessWidget {
   }
 }
 
+/// Dispatched / Not Dispatched, styled like [StatusChip].
+class DispatchChip extends StatelessWidget {
+  const DispatchChip(this.dispatched, {super.key, this.dense = false});
+
+  final bool dispatched;
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = dispatched ? MColors.green : MColors.grey;
+    final bg = dispatched ? MColors.greenBg : MColors.greyBg;
+    final label = dispatched ? 'Dispatched' : 'Not Dispatched';
+    return Semantics(
+      label: 'Dispatch: $label',
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: dense ? 7 : 9,
+          vertical: dense ? 2.5 : 4,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (dispatched)
+              Icon(Icons.local_shipping, size: dense ? 12 : 13, color: fg)
+            else
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+              ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              maxLines: 1,
+              style: TextStyle(
+                color: fg,
+                fontSize: dense ? 11 : 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Small neutral tag, e.g. "First Counter", "Cash".
 class MBadge extends StatelessWidget {
   const MBadge(

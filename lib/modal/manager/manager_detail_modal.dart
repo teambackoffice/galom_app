@@ -141,6 +141,7 @@ class TransactionDetail {
   final String? paymentStatus;
   final double? perDelivered;
   final double? perBilled;
+  final bool customDispatch;
 
   // Payment Entry
   final String? paymentType;
@@ -187,6 +188,7 @@ class TransactionDetail {
     required this.paymentStatus,
     required this.perDelivered,
     required this.perBilled,
+    this.customDispatch = false,
     required this.paymentType,
     required this.modeOfPayment,
     required this.paidAmount,
@@ -238,6 +240,7 @@ class TransactionDetail {
         paymentStatus: asStringOrNull(json['payment_status']),
         perDelivered: asDoubleOrNull(json['per_delivered']),
         perBilled: asDoubleOrNull(json['per_billed']),
+        customDispatch: asFlag(json['custom_dispatch']),
         paymentType: asStringOrNull(json['payment_type']),
         modeOfPayment: asStringOrNull(json['mode_of_payment']),
         paidAmount: asDoubleOrNull(json['paid_amount']),

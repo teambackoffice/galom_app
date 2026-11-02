@@ -92,7 +92,7 @@ class _ExpenseClaimDetailsPageState extends State<ExpenseClaimDetailsPage> {
                               height: 20,
                               color: ComplaintStyle.border,
                             ),
-                          _buildLine(c.expenses[i], c.approvalStatus),
+                          _buildLine(c.expenses[i], c.approvalStatus, ctrl.sid),
                         ],
                       ],
                     ),
@@ -240,7 +240,11 @@ class _ExpenseClaimDetailsPageState extends State<ExpenseClaimDetailsPage> {
     );
   }
 
-  Widget _buildLine(ExpenseLine l, String approvalStatus) {
+  Widget _buildLine(ExpenseLine l, String approvalStatus, String? sid) {
+    final receipt = l.receipt;
+    final receiptUrl = receipt == null
+        ? null
+        : CustomerComplaintService.attachmentUrl(receipt);
     final showSanctioned =
         approvalStatus == 'Approved' && l.sanctionedAmount != l.amount;
     return Row(
@@ -264,7 +268,7 @@ class _ExpenseClaimDetailsPageState extends State<ExpenseClaimDetailsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                l.expenseType.isEmpty ? 'Expense' : l.expenseType,
+                l.typeLabel.isEmpty ? 'Expense' : l.typeLabel,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
@@ -289,6 +293,20 @@ class _ExpenseClaimDetailsPageState extends State<ExpenseClaimDetailsPage> {
                   color: ComplaintStyle.muted,
                 ),
               ),
+              if (receiptUrl != null) ...[
+                const SizedBox(height: 8),
+                GestureDetector(
+                  onTap: () => _openImage(receiptUrl, sid),
+                  child: SizedBox(
+                    width: 64,
+                    child: ComplaintAttachmentImage(
+                      url: receiptUrl,
+                      sid: sid,
+                      height: 64,
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

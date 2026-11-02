@@ -114,7 +114,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
         context,
         listen: false,
       ).getItemTaxes(); // Load tax data
-      _initializeSpecialOfferSettings();
     });
   }
 
@@ -275,12 +274,6 @@ class _CreateSalesOrderState extends State<CreateSalesOrder> {
           animationDuration: const Duration(milliseconds: 400),
         ).show(context);
         return;
-      }
-
-      // 🔄 If special offer switch was ON, turn it OFF after successful order (do this FIRST)
-      if (isSpecialOrder) {
-        // Update silently without showing additional messages
-        _updateSpecialOfferSilently(false);
       }
 
       // 🎯 SUCCESS: Sales order created successfully

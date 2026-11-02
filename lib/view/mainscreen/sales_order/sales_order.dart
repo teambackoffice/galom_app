@@ -457,6 +457,7 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
             child: Column(
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
                       padding: EdgeInsets.all(12),
@@ -499,6 +500,10 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                         ],
                       ),
                     ),
+                    if (order.docstatus == 1) ...[
+                      SizedBox(width: 8),
+                      _buildDispatchStatus(order.customDispatch),
+                    ],
                   ],
                 ),
                 SizedBox(height: 16),
@@ -539,6 +544,29 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDispatchStatus(bool dispatched) {
+    final color = dispatched ? Color(0xFF00875A) : Color(0xFF9AA0A6);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          dispatched ? Icons.local_shipping : Icons.local_shipping_outlined,
+          size: 15,
+          color: color,
+        ),
+        SizedBox(width: 4),
+        Text(
+          dispatched ? 'Dispatched' : 'Not dispatched',
+          style: TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 
@@ -859,6 +887,12 @@ class _SalesOrdersListPageState extends State<SalesOrdersListPage>
                               Icons.calendar_today,
                               'Order Date',
                               order.deliveryDate.toString().substring(0, 10),
+                            ),
+                            SizedBox(height: 12),
+                            _buildInfoRow(
+                              Icons.local_shipping_outlined,
+                              'Dispatch',
+                              order.customDispatch ? 'Yes' : 'No',
                             ),
                           ],
                         ),

@@ -46,22 +46,14 @@ class SavedExpenseStore {
     await file.writeAsString(jsonEncode(items.map((e) => e.toJson()).toList()));
   }
 
-  /// Copies [receipts] into the store unless they are already there.
-  Future<List<String>> _keepReceipts(String id, List<File> receipts) async {
+  /// Copies [src] into the store unless it is already there.
+  Future<String> _keep(String id, String tag, File src) async {
     final dir = await _dir();
-    final kept = <String>[];
-    for (var i = 0; i < receipts.length; i++) {
-      final src = receipts[i];
-      if (src.path.startsWith(dir.path)) {
-        kept.add(src.path);
-        continue;
-      }
-      final ext = src.path.contains('.') ? src.path.split('.').last : 'jpg';
-      final stamp = DateTime.now().microsecondsSinceEpoch;
-      final copy = await src.copy('${dir.path}/${id}_${stamp}_$i.$ext');
-      kept.add(copy.path);
-    }
-    return kept;
+    if (src.path.startsWith(dir.path)) return src.path;
+    final ext = src.path.contains('.') ? src.path.split('.').last : 'jpg';
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final copy = await src.copy('${dir.path}/${id}_${stamp}_$tag.$ext');
+    return copy.path;
   }
 
   Future<void> _deleteFiles(Iterable<String> paths) async {
@@ -81,11 +73,22 @@ class SavedExpenseStore {
   }) async {
     final items = await load();
     final entryId = id ?? DateTime.now().microsecondsSinceEpoch.toString();
-    final paths = await _keepReceipts(entryId, receipts);
+    final paths = [
+      for (var i = 0; i < receipts.length; i++)
+        await _keep(entryId, 'r$i', receipts[i]),
+    ];
+    final keptLines = [
+      for (var i = 0; i < lines.length; i++)
+        lines[i].receiptPath == null
+            ? lines[i]
+            : lines[i].withReceipt(
+                await _keep(entryId, 'l$i', File(lines[i].receiptPath!)),
+              ),
+    ];
     final entry = SavedExpense(
       id: entryId,
       savedAt: DateTime.now(),
-      lines: lines,
+      lines: keptLines,
       receiptPaths: paths,
       remark: remark,
     );
@@ -94,10 +97,10 @@ class SavedExpenseStore {
     if (index == -1) {
       items.add(entry);
     } else {
-      final dropped = items[index].receiptPaths.where(
-        (p) => !paths.contains(p),
+      final keep = entry.allFilePaths.toSet();
+      await _deleteFiles(
+        items[index].allFilePaths.where((p) => !keep.contains(p)),
       );
-      await _deleteFiles(dropped);
       items[index] = entry;
     }
     await _write(items);
@@ -108,7 +111,7 @@ class SavedExpenseStore {
   Future<List<SavedExpense>> remove(Set<String> ids) async {
     final items = await load();
     await _deleteFiles(
-      items.where((e) => ids.contains(e.id)).expand((e) => e.receiptPaths),
+      items.where((e) => ids.contains(e.id)).expand((e) => e.allFilePaths),
     );
     items.removeWhere((e) => ids.contains(e.id));
     await _write(items);

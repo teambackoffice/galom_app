@@ -142,6 +142,7 @@ class SalesOrderRecord {
   final double perBilled;
   final String? salesPerson;
   final String salesPersonName;
+  final bool customDispatch;
 
   const SalesOrderRecord({
     required this.name,
@@ -158,6 +159,7 @@ class SalesOrderRecord {
     required this.perBilled,
     required this.salesPerson,
     required this.salesPersonName,
+    this.customDispatch = false,
   });
 
   String get customerDisplay =>
@@ -181,6 +183,7 @@ class SalesOrderRecord {
         perBilled: asDouble(json['per_billed']),
         salesPerson: asStringOrNull(json['sales_person']),
         salesPersonName: asString(json['sales_person_name']),
+        customDispatch: asFlag(json['custom_dispatch']),
       );
 }
 
