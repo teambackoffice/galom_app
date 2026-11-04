@@ -8,7 +8,9 @@ import 'package:location_tracker_app/modal/customer_list_modal.dart';
 class CustomerListService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  Future<CustomerListModal> fetchCustomerList() async {
+  /// [ownOnly] limits the list to customers whose Sales Team includes the
+  /// logged-in sales person.
+  Future<CustomerListModal> fetchCustomerList({bool ownOnly = false}) async {
     final String url = '${ApiConstants.baseUrl}get_customers';
 
     try {
@@ -19,7 +21,9 @@ class CustomerListService {
       }
 
       final response = await http.get(
-        Uri.parse(url),
+        Uri.parse(url).replace(
+          queryParameters: ownOnly ? {'own_only': '1'} : null,
+        ),
         headers: {'Content-Type': 'application/json', 'Cookie': 'sid=$sid'},
       );
 

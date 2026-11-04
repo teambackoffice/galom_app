@@ -35,6 +35,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
   TextEditingController referenceDateController = TextEditingController();
   TextEditingController descriptionController = TextEditingController();
   DateTime? selectedReferenceDate;
+  TextEditingController chequeClearanceDateController = TextEditingController();
+  DateTime? selectedChequeClearanceDate;
+
+  bool get _isCheque => selectedPaymentMethod.toLowerCase() == 'cheque';
 
   @override
   void initState() {
@@ -46,7 +50,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       Provider.of<GetCustomerListController>(
         context,
         listen: false,
-      ).fetchCustomerList();
+      ).fetchCustomerList(ownOnly: true);
 
       // Fetch payment methods
       Provider.of<ModeOfPayController>(context, listen: false).fetchmodeofpay();
@@ -58,6 +62,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
     paymentController.dispose();
     referenceNumberController.dispose();
     referenceDateController.dispose();
+    chequeClearanceDateController.dispose();
     descriptionController.dispose();
     for (var controller in invoiceControllers.values) {
       controller.dispose();
@@ -89,6 +94,38 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       setState(() {
         selectedReferenceDate = picked;
         referenceDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
+  // Date the cheque amount will be debited from the bank (post-dated cheques)
+  void _selectChequeClearanceDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate:
+          selectedChequeClearanceDate ?? selectedReferenceDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF667EEA),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedChequeClearanceDate = picked;
+        chequeClearanceDateController.text = DateFormat(
+          'yyyy-MM-dd',
+        ).format(picked);
       });
     }
   }
@@ -289,6 +326,8 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       referenceDateController.clear();
       descriptionController.clear();
       selectedReferenceDate = null;
+      chequeClearanceDateController.clear();
+      selectedChequeClearanceDate = null;
 
       for (var controller in invoiceControllers.values) {
         controller.dispose();
@@ -604,6 +643,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                               selectedPaymentMethod = method;
                               // Clear reference fields when switching payment methods
                               if (method.toLowerCase() == 'cash') {}
+                              if (!_isCheque) {
+                                chequeClearanceDateController.clear();
+                                selectedChequeClearanceDate = null;
+                              }
                             });
                           },
                           child: Container(
@@ -716,6 +759,27 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                           suffixIcon: Icon(Icons.arrow_drop_down),
                         ),
                       ),
+
+                      // Cheque Clearance Date Field
+                      if (_isCheque) ...[
+                        SizedBox(height: 12),
+                        TextFormField(
+                          controller: chequeClearanceDateController,
+                          readOnly: true,
+                          onTap: _selectChequeClearanceDate,
+                          decoration: InputDecoration(
+                            labelText: 'Cheque Clearance Date *',
+                            hintText: 'Date amount will be taken from bank',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            prefixIcon: Icon(Icons.event_available, size: 20),
+                            suffixIcon: Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 );
@@ -1958,6 +2022,16 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
           );
           return;
         }
+
+        if (_isCheque && selectedChequeClearanceDate == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cheque clearance date is required for Cheque'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
 
       final controller = context.read<CraetePaymentEntryController>();
@@ -1983,6 +2057,9 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
               selectedPaymentMethod.toLowerCase() != 'cash' &&
                   selectedReferenceDate != null
               ? DateFormat('yyyy-MM-dd').format(selectedReferenceDate!)
+              : null,
+          chequeClearanceDate: _isCheque && selectedChequeClearanceDate != null
+              ? DateFormat('yyyy-MM-dd').format(selectedChequeClearanceDate!)
               : null,
           description: descriptionController.text.trim(),
         );

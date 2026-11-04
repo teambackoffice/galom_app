@@ -15,6 +15,7 @@ class PaySalesInvoiceService {
     required String modeOfPayment,
     String? referenceNumber,
     DateTime? referenceDate,
+    DateTime? chequeClearanceDate,
     String? description,
   }) async {
     try {
@@ -43,6 +44,12 @@ class PaySalesInvoiceService {
         bodyMap["reference_date"] = DateFormat(
           'yyyy-MM-dd',
         ).format(referenceDate);
+      }
+
+      if (chequeClearanceDate != null) {
+        bodyMap["cheque_clearance_date"] = DateFormat(
+          'yyyy-MM-dd',
+        ).format(chequeClearanceDate);
       }
 
       if (description != null && description.trim().isNotEmpty) {

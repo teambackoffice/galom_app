@@ -18,6 +18,7 @@ class PaySalesInvoiceController extends ChangeNotifier {
     required String mode_of_payment,
     String? referenceNumber, // optional
     DateTime? referenceDate, // optional
+    DateTime? chequeClearanceDate, // optional, cheque only
     String? description, // optional
   }) async {
     _isLoading = true;
@@ -32,6 +33,7 @@ class PaySalesInvoiceController extends ChangeNotifier {
         modeOfPayment: mode_of_payment,
         referenceNumber: referenceNumber,
         referenceDate: referenceDate,
+        chequeClearanceDate: chequeClearanceDate,
         description: description,
       );
     } catch (e) {

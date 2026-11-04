@@ -959,8 +959,8 @@ class InvoiceTargetSection extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _miniFigure(
-                  'Collected',
-                  _short.format(data.collectedAmount),
+                  'Invoiced',
+                  _short.format(data.invoicedGrandTotal),
                   Colors.white,
                 ),
                 const SizedBox(width: 8),
