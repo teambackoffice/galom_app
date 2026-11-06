@@ -50,16 +50,12 @@ class EmployeeLocationService {
       http.StreamedResponse response = await request.send();
 
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
-        print("✅ Location sent successfully: $responseBody");
+        await response.stream.bytesToString();
       } else {
-        final responseBody = await response.stream.bytesToString();
-        print("❌ Server error ${response.statusCode}: $responseBody");
-        print("📤 Request body was: $body");
+        await response.stream.bytesToString();
         throw Exception('Failed to send location: ${response.statusCode}');
       }
     } catch (e) {
-      print("❌ Error sending location: $e");
       rethrow;
     }
   }
@@ -109,9 +105,9 @@ class EmployeeLocationService {
       http.StreamedResponse response = await request.send();
 
       if (response.statusCode == 200) {
-        final responseBody = await response.stream.bytesToString();
+        await response.stream.bytesToString();
       } else {
-        final responseBody = await response.stream.bytesToString();
+        await response.stream.bytesToString();
 
         throw Exception(
           'Failed to send batch location: ${response.statusCode}',

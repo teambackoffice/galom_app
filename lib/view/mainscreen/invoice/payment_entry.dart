@@ -33,7 +33,12 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
   // ADD THESE NEW VARIABLES:
   TextEditingController referenceNumberController = TextEditingController();
   TextEditingController referenceDateController = TextEditingController();
+  TextEditingController descriptionController = TextEditingController();
   DateTime? selectedReferenceDate;
+  TextEditingController chequeClearanceDateController = TextEditingController();
+  DateTime? selectedChequeClearanceDate;
+
+  bool get _isCheque => selectedPaymentMethod.toLowerCase() == 'cheque';
 
   @override
   void initState() {
@@ -45,7 +50,7 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       Provider.of<GetCustomerListController>(
         context,
         listen: false,
-      ).fetchCustomerList();
+      ).fetchCustomerList(ownOnly: true);
 
       // Fetch payment methods
       Provider.of<ModeOfPayController>(context, listen: false).fetchmodeofpay();
@@ -55,6 +60,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
   @override
   void dispose() {
     paymentController.dispose();
+    referenceNumberController.dispose();
+    referenceDateController.dispose();
+    chequeClearanceDateController.dispose();
+    descriptionController.dispose();
     for (var controller in invoiceControllers.values) {
       controller.dispose();
     }
@@ -85,6 +94,38 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       setState(() {
         selectedReferenceDate = picked;
         referenceDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
+  // Date the cheque amount will be debited from the bank (post-dated cheques)
+  void _selectChequeClearanceDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate:
+          selectedChequeClearanceDate ?? selectedReferenceDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF667EEA),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        selectedChequeClearanceDate = picked;
+        chequeClearanceDateController.text = DateFormat(
+          'yyyy-MM-dd',
+        ).format(picked);
       });
     }
   }
@@ -283,7 +324,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
       showAllocationWarning = false; // ADD THIS LINE
       referenceNumberController.clear();
       referenceDateController.clear();
+      descriptionController.clear();
       selectedReferenceDate = null;
+      chequeClearanceDateController.clear();
+      selectedChequeClearanceDate = null;
 
       for (var controller in invoiceControllers.values) {
         controller.dispose();
@@ -324,6 +368,167 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
 
   String _formatDate(DateTime date) {
     return DateFormat('dd MMM yyyy').format(date);
+  }
+
+  /// Days since the invoice was created, counted by calendar date.
+  int _daysSince(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today.difference(DateTime(date.year, date.month, date.day)).inDays;
+  }
+
+  /// Whole calendar months since [postingDate], plus the leftover days.
+  /// Under a month, `months` is 0 and `days` is the total day count.
+  ({int months, int days}) _invoiceAge(DateTime postingDate) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    var months =
+        (now.year - postingDate.year) * 12 + now.month - postingDate.month;
+    if (now.day < postingDate.day) months--;
+    if (months < 1) return (months: 0, days: _daysSince(postingDate));
+
+    // DateTime normalises overflow, e.g. 31 Jan + 1 month -> 3 Mar.
+    final anniversary = DateTime(
+      postingDate.year,
+      postingDate.month + months,
+      postingDate.day,
+    );
+    final extra = today.difference(anniversary).inDays;
+    return (months: months, days: extra < 0 ? 0 : extra);
+  }
+
+  Widget _buildInvoiceAge(DateTime postingDate) {
+    String plural(int n, String unit) => '$n $unit${n == 1 ? '' : 's'}';
+
+    final totalDays = _daysSince(postingDate);
+    final age = _invoiceAge(postingDate);
+
+    final Color color;
+    final String status;
+    if (totalDays > 60) {
+      color = Colors.red[700]!;
+      status = 'Long pending';
+    } else if (totalDays > 30) {
+      color = Colors.orange[800]!;
+      status = 'Ageing';
+    } else {
+      color = Colors.green[700]!;
+      status = 'Recent';
+    }
+
+    final String bigNumber;
+    final String unit;
+    final String headline;
+    if (totalDays <= 0) {
+      bigNumber = '0';
+      unit = 'DAYS';
+      headline = 'Created today';
+    } else if (age.months == 0) {
+      bigNumber = '${age.days}';
+      unit = age.days == 1 ? 'DAY' : 'DAYS';
+      headline = '${plural(age.days, 'day')} old';
+    } else {
+      bigNumber = '${age.months}';
+      unit = age.months == 1 ? 'MONTH' : 'MONTHS';
+      headline = age.days > 0
+          ? '${plural(age.months, 'month')} ${plural(age.days, 'day')} old'
+          : '${plural(age.months, 'month')} old';
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(10, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        border: Border.all(color: color.withOpacity(0.25)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      bigNumber,
+                      style: TextStyle(
+                        fontSize: 20,
+                        height: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      unit,
+                      style: TextStyle(
+                        fontSize: 8.5,
+                        letterSpacing: 0.6,
+                        fontWeight: FontWeight.w700,
+                        color: color,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      headline,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[850],
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Created on ${_formatDate(postingDate)}',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          // Fills up over 90 days so older invoices stand out at a glance.
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (totalDays / 90).clamp(0.0, 1.0),
+              minHeight: 5,
+              backgroundColor: color.withOpacity(0.12),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPaymentMethodSelection() {
@@ -438,6 +643,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                               selectedPaymentMethod = method;
                               // Clear reference fields when switching payment methods
                               if (method.toLowerCase() == 'cash') {}
+                              if (!_isCheque) {
+                                chequeClearanceDateController.clear();
+                                selectedChequeClearanceDate = null;
+                              }
                             });
                           },
                           child: Container(
@@ -550,6 +759,27 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                           suffixIcon: Icon(Icons.arrow_drop_down),
                         ),
                       ),
+
+                      // Cheque Clearance Date Field
+                      if (_isCheque) ...[
+                        SizedBox(height: 12),
+                        TextFormField(
+                          controller: chequeClearanceDateController,
+                          readOnly: true,
+                          onTap: _selectChequeClearanceDate,
+                          decoration: InputDecoration(
+                            labelText: 'Cheque Clearance Date *',
+                            hintText: 'Date amount will be taken from bank',
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            prefixIcon: Icon(Icons.event_available, size: 20),
+                            suffixIcon: Icon(Icons.arrow_drop_down),
+                          ),
+                        ),
+                      ],
                     ],
                   ],
                 );
@@ -614,6 +844,8 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
               ),
             ],
           ),
+          SizedBox(height: 12),
+          _buildInvoiceAge(invoice.postingDate),
           SizedBox(height: 12),
           Row(
             children: [
@@ -1439,6 +1671,37 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
 
               SizedBox(height: 16),
 
+              // Description
+              Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Description',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      TextFormField(
+                        controller: descriptionController,
+                        maxLines: 3,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: 'Enter description (optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 16),
+
               // Invoice List
               if (paymentEntryData != null && !isLoadingPaymentData) ...[
                 paymentEntryData?.message.totalOutstandingAmount == 0
@@ -1759,6 +2022,16 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
           );
           return;
         }
+
+        if (_isCheque && selectedChequeClearanceDate == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cheque clearance date is required for Cheque'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
       }
 
       final controller = context.read<CraetePaymentEntryController>();
@@ -1785,6 +2058,10 @@ class _PaymentEntryPageState extends State<PaymentEntryPage> {
                   selectedReferenceDate != null
               ? DateFormat('yyyy-MM-dd').format(selectedReferenceDate!)
               : null,
+          chequeClearanceDate: _isCheque && selectedChequeClearanceDate != null
+              ? DateFormat('yyyy-MM-dd').format(selectedChequeClearanceDate!)
+              : null,
+          description: descriptionController.text.trim(),
         );
 
         if (controller.responseData != null) {

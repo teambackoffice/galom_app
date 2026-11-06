@@ -48,6 +48,8 @@ class SalesOrder {
   double totalTaxAmount;
   double grandTotal;
   double roundedTotal;
+  int docstatus;
+  bool customDispatch;
 
   List<Item> items;
 
@@ -59,6 +61,8 @@ class SalesOrder {
     required this.totalTaxAmount,
     required this.grandTotal,
     required this.roundedTotal,
+    this.docstatus = 0,
+    this.customDispatch = false,
     required this.items,
   });
 
@@ -70,6 +74,8 @@ class SalesOrder {
     totalTaxAmount: (json["total_taxes_and_charges"] as num?)?.toDouble() ?? 0.0,
     grandTotal: (json["grand_total"] as num?)?.toDouble() ?? 0.0,
     roundedTotal: (json["rounded_total"] as num?)?.toDouble() ?? 0.0,
+    docstatus: (json["docstatus"] as num?)?.toInt() ?? 0,
+    customDispatch: (json["custom_dispatch"] ?? 0) == 1,
     items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
   );
 
@@ -82,6 +88,8 @@ class SalesOrder {
     "total_tax_amount": totalTaxAmount,
     "grand_total": grandTotal,
     "rounded_total": roundedTotal,
+    "docstatus": docstatus,
+    "custom_dispatch": customDispatch ? 1 : 0,
     "items": List<dynamic>.from(items.map((x) => x.toJson())),
   };
 }

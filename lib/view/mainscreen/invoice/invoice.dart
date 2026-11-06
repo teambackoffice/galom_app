@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:location_tracker_app/controller/invoice_list_controller.dart';
+import 'package:location_tracker_app/controller/my_target_controller.dart';
+import 'package:location_tracker_app/modal/customer_list_modal.dart';
 import 'package:location_tracker_app/modal/invoice_list_modal.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/invoice_details.dart';
 import 'package:location_tracker_app/view/mainscreen/invoice/payment_entry.dart'
     hide Invoice;
 import 'package:location_tracker_app/view/mainscreen/invoice/payment_page.dart'
     hide Invoice;
+import 'package:location_tracker_app/view/mainscreen/target/my_target.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -29,10 +33,16 @@ class _InvoicePageState extends State<InvoicePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<InvoiceListController>(
+      final invoiceController = Provider.of<InvoiceListController>(
         context,
         listen: false,
-      ).fetchInvoiceList();
+      );
+      invoiceController.fetchInvoiceList();
+      invoiceController.fetchCustomers();
+      Provider.of<MyTargetController>(
+        context,
+        listen: false,
+      ).fetchCurrentMonthSummary();
     });
   }
 
@@ -69,6 +79,10 @@ class _InvoicePageState extends State<InvoicePage> {
   // Refresh function
   Future<void> _onRefresh() async {
     try {
+      Provider.of<MyTargetController>(
+        context,
+        listen: false,
+      ).fetchCurrentMonthSummary();
       await Provider.of<InvoiceListController>(
         context,
         listen: false,
@@ -121,6 +135,7 @@ class _InvoicePageState extends State<InvoicePage> {
             children: [
               _buildHeader(),
               _buildSearchBar(),
+              _buildFilterBar(),
               Expanded(
                 child: RefreshIndicator(
                   key: _refreshIndicatorKey,
@@ -139,8 +154,15 @@ class _InvoicePageState extends State<InvoicePage> {
                         return _buildEmptyState();
                       }
 
+                      final customer = controller.selectedCustomer;
                       final allInvoices =
-                          controller.invoiceList?.message.invoices ?? [];
+                          (controller.invoiceList?.message.invoices ?? [])
+                              .where(
+                                (invoice) =>
+                                    customer == null ||
+                                    invoice.customer == customer.name,
+                              )
+                              .toList();
                       final filteredInvoices = _filterInvoices(allInvoices);
 
                       // Show no results found if search query exists but no matches
@@ -172,8 +194,18 @@ class _InvoicePageState extends State<InvoicePage> {
                             Expanded(
                               child: ListView.builder(
                                 physics: AlwaysScrollableScrollPhysics(),
-                                itemCount: filteredInvoices.length,
+                                // Target overview sits above the invoices,
+                                // hidden while searching.
+                                itemCount:
+                                    filteredInvoices.length +
+                                    (_searchQuery.isEmpty ? 1 : 0),
                                 itemBuilder: (context, index) {
+                                  if (_searchQuery.isEmpty) {
+                                    if (index == 0) {
+                                      return const InvoiceTargetSection();
+                                    }
+                                    index -= 1;
+                                  }
                                   final invoice = filteredInvoices[index];
                                   return InkWell(
                                     borderRadius: BorderRadius.circular(16),
@@ -347,6 +379,265 @@ class _InvoicePageState extends State<InvoicePage> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Month filter is applied on the server, customer filter locally
+  Widget _buildFilterBar() {
+    return Consumer<InvoiceListController>(
+      builder: (context, controller, child) {
+        final month = controller.selectedMonth;
+        final customer = controller.selectedCustomer;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: _buildFilterChip(
+                  icon: Icons.calendar_month_rounded,
+                  label: month == null
+                      ? 'All months'
+                      : DateFormat('MMM yyyy').format(month),
+                  isActive: month != null,
+                  onTap: () => _pickMonth(controller),
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: _buildFilterChip(
+                  icon: Icons.person_rounded,
+                  label: customer?.customerName ?? 'All customers',
+                  isActive: customer != null,
+                  onTap: () => _pickCustomer(controller),
+                ),
+              ),
+              if (month != null || customer != null) ...[
+                SizedBox(width: 8),
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: controller.clearFilters,
+                  child: Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: Icon(
+                      Icons.filter_alt_off_rounded,
+                      size: 18,
+                      color: Colors.red[400],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final color = isActive ? Color(0xFF667EEA) : Colors.grey[700]!;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? Color(0xFF667EEA).withOpacity(0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isActive ? Color(0xFF667EEA) : Colors.grey[300]!,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: color),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickMonth(InvoiceListController controller) async {
+    // Current month and the 23 before it
+    final now = DateTime.now();
+    final months = List.generate(24, (i) => DateTime(now.year, now.month - i));
+    final selected = controller.selectedMonth;
+
+    final picked = await _showFilterSheet<DateTime>(
+      title: 'Select month',
+      allLabel: 'All months',
+      options: months,
+      labelOf: (m) => DateFormat('MMMM yyyy').format(m),
+      isSelected: (m) =>
+          selected != null &&
+          m.year == selected.year &&
+          m.month == selected.month,
+      isAllSelected: selected == null,
+    );
+    if (picked != null) {
+      controller.setMonth(picked.value);
+    }
+  }
+
+  Future<void> _pickCustomer(InvoiceListController controller) async {
+    if (controller.customers.isEmpty) {
+      await controller.fetchCustomers();
+    }
+    if (!mounted) return;
+    final selected = controller.selectedCustomer;
+
+    final picked = await _showFilterSheet<MessageElement>(
+      title: 'Select customer',
+      allLabel: 'All customers',
+      options: controller.customers,
+      labelOf: (c) => c.customerName,
+      isSelected: (c) => c.name == selected?.name,
+      isAllSelected: selected == null,
+      searchHint: 'Search customer...',
+      matches: (c, query) =>
+          c.customerName.toLowerCase().contains(query) ||
+          c.name.toLowerCase().contains(query),
+    );
+    if (picked != null) {
+      controller.setCustomer(picked.value);
+    }
+  }
+
+  // Returns null when dismissed; a _FilterChoice with a null value for "All".
+  // Passing [matches] adds a search bar; it receives the lowercased query.
+  Future<_FilterChoice<T>?> _showFilterSheet<T>({
+    required String title,
+    required String allLabel,
+    required List<T> options,
+    required String Function(T) labelOf,
+    required bool Function(T) isSelected,
+    required bool isAllSelected,
+    String searchHint = 'Search...',
+    bool Function(T option, String query)? matches,
+  }) {
+    Widget tile(String label, bool selected, _FilterChoice<T> choice) {
+      return ListTile(
+        title: Text(
+          label,
+          style: TextStyle(
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            color: selected ? Color(0xFF667EEA) : Colors.black87,
+          ),
+        ),
+        trailing: selected
+            ? Icon(Icons.check_rounded, color: Color(0xFF667EEA))
+            : null,
+        onTap: () => Navigator.pop(context, choice),
+      );
+    }
+
+    String query = '';
+
+    return showModalBottomSheet<_FilterChoice<T>>(
+      context: context,
+      isScrollControlled: matches != null,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          final visible = query.isEmpty || matches == null
+              ? options
+              : options.where((o) => matches(o, query)).toList();
+          return Padding(
+            // Keep the search bar above the keyboard
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: SafeArea(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight:
+                      MediaQuery.of(context).size.height *
+                      (matches != null ? 0.8 : 0.6),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (matches != null)
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: TextField(
+                          onChanged: (value) => setSheetState(
+                            () => query = value.trim().toLowerCase(),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: searchHint,
+                            prefixIcon: Icon(Icons.search_rounded),
+                            isDense: true,
+                            filled: true,
+                            fillColor: Colors.grey[100],
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                    Flexible(
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: [
+                          if (query.isEmpty)
+                            tile(
+                              allLabel,
+                              isAllSelected,
+                              _FilterChoice<T>(null),
+                            ),
+                          for (final option in visible)
+                            tile(
+                              labelOf(option),
+                              isSelected(option),
+                              _FilterChoice<T>(option),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -528,8 +819,17 @@ class _InvoicePageState extends State<InvoicePage> {
   Widget _buildEmptyState() {
     return SingleChildScrollView(
       physics: AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(20),
+      child: Column(
+        children: [const InvoiceTargetSection(), _buildEmptyMessage()],
+      ),
+    );
+  }
+
+  Widget _buildEmptyMessage() {
+    return SizedBox(
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.6,
+        height: MediaQuery.of(context).size.height * 0.3,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -704,4 +1004,9 @@ class _InvoicePageState extends State<InvoicePage> {
       ),
     );
   }
+}
+
+class _FilterChoice<T> {
+  final T? value;
+  const _FilterChoice(this.value);
 }

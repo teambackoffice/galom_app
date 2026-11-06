@@ -9,7 +9,8 @@ class InvoiceListService {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   final String url = '${ApiConstants.baseUrl}get_sales_invoice_list';
 
-  Future<InvoiceListModal?> getInvoiceList() async {
+  /// [month] is `YYYY-MM`; null means all months.
+  Future<InvoiceListModal?> getInvoiceList({String? month}) async {
     try {
       final String? sid = await _secureStorage.read(key: 'sid');
       final String? salesPersonId = await _secureStorage.read(
@@ -21,9 +22,12 @@ class InvoiceListService {
       }
 
       // Build request URL with sales person ID
-      final uri = Uri.parse(
-        url,
-      ).replace(queryParameters: {'sales_person': salesPersonId});
+      final uri = Uri.parse(url).replace(
+        queryParameters: {
+          'sales_person': salesPersonId,
+          if (month != null) 'month': month,
+        },
+      );
 
       final response = await http.get(
         uri,
@@ -31,10 +35,13 @@ class InvoiceListService {
       );
 
       if (response.statusCode == 200) {
+        print("===== Sales invoice List ====");
+        print(response.body);
         try {
           final decoded = jsonDecode(response.body);
           return invoiceListModalFromJson(response.body);
         } catch (e) {
+          print("errorssss $e");
           throw Exception('Failed to parse response: $e');
         }
       } else {
@@ -43,6 +50,7 @@ class InvoiceListService {
         );
       }
     } catch (e) {
+      print("error $e");
       throw Exception('Network error: $e');
     }
   }

@@ -24,6 +24,8 @@ class CreatePaymentEntryService {
     required List<Map<String, dynamic>> invoiceAllocations,
     String? referenceNumber,
     String? referenceDate,
+    String? chequeClearanceDate,
+    String? description,
   }) async {
     try {
       final sid = await _getSid();
@@ -56,6 +58,15 @@ class CreatePaymentEntryService {
 
       if (referenceDate != null && referenceDate.trim().isNotEmpty) {
         requestBody["reference_date"] = referenceDate.trim();
+      }
+
+      if (chequeClearanceDate != null &&
+          chequeClearanceDate.trim().isNotEmpty) {
+        requestBody["cheque_clearance_date"] = chequeClearanceDate.trim();
+      }
+
+      if (description != null && description.trim().isNotEmpty) {
+        requestBody["description"] = description.trim();
       }
 
       final body = jsonEncode(requestBody);

@@ -31,6 +31,8 @@ class _PaymentPageState extends State<PaymentPage>
   final _amountController = TextEditingController();
   final _referenceNumberController = TextEditingController();
   final _referenceDateController = TextEditingController();
+  final _chequeClearanceDateController = TextEditingController();
+  final _descriptionController = TextEditingController();
   late AnimationController _amountAnimationController;
   late Animation<double> _amountScaleAnimation;
 
@@ -57,7 +59,23 @@ class _PaymentPageState extends State<PaymentPage>
     });
   }
 
+  bool get _isCheque => _selectedMethod.toLowerCase() == 'cheque';
+
   void _processPayment() async {
+    if (_isCheque && _chequeClearanceDateController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select the cheque clearance date'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
     final controller = Provider.of<PaySalesInvoiceController>(
       context,
       listen: false,
@@ -73,6 +91,11 @@ class _PaymentPageState extends State<PaymentPage>
       referenceDate: _referenceDateController.text.isNotEmpty
           ? DateFormat('yyyy-MM-dd').parse(_referenceDateController.text)
           : null,
+      chequeClearanceDate:
+          _isCheque && _chequeClearanceDateController.text.isNotEmpty
+          ? DateFormat('yyyy-MM-dd').parse(_chequeClearanceDateController.text)
+          : null,
+      description: _descriptionController.text,
 
       // "card" or "cash"
     );
@@ -500,11 +523,82 @@ class _PaymentPageState extends State<PaymentPage>
                 ),
                 onTap: () => _selectReferenceDate(),
               ),
+
+              // Cheque Clearance Date Field
+              if (_isCheque) ...[
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _chequeClearanceDateController,
+                  readOnly: true,
+                  decoration: InputDecoration(
+                    labelText: 'Cheque Clearance Date *',
+                    hintText: 'Date amount will be taken from bank',
+                    prefixIcon: const Icon(
+                      Icons.event_available,
+                      color: Color(0xFF667EEA),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF667EEA),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  onTap: () => _selectChequeClearanceDate(),
+                ),
+              ],
             ],
           ),
         ),
         const SizedBox(height: 24), // Add spacing after reference fields
       ],
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Description',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: 'Enter description (optional)',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[300]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Color(0xFF667EEA),
+                  width: 2,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -531,6 +625,36 @@ class _PaymentPageState extends State<PaymentPage>
     if (picked != null) {
       setState(() {
         _referenceDateController.text = DateFormat('yyyy-MM-dd').format(picked);
+      });
+    }
+  }
+
+  // Date the cheque amount will be debited from the bank (post-dated cheques)
+  void _selectChequeClearanceDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF667EEA),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _chequeClearanceDateController.text = DateFormat(
+          'yyyy-MM-dd',
+        ).format(picked);
       });
     }
   }
@@ -620,6 +744,7 @@ class _PaymentPageState extends State<PaymentPage>
             _buildAmountInput(),
             const SizedBox(height: 24),
             _buildReferenceFields(),
+            _buildDescriptionField(),
             const SizedBox(height: 24),
 
             // Payment Methods
@@ -659,6 +784,9 @@ class _PaymentPageState extends State<PaymentPage>
                           if (mode.toLowerCase() == 'cash') {
                             _referenceNumberController.clear();
                             _referenceDateController.clear();
+                          }
+                          if (!_isCheque) {
+                            _chequeClearanceDateController.clear();
                           }
                         });
                       },
@@ -809,6 +937,10 @@ class _PaymentPageState extends State<PaymentPage>
     _cvvController.dispose();
     _nameController.dispose();
     _amountController.dispose();
+    _referenceNumberController.dispose();
+    _referenceDateController.dispose();
+    _chequeClearanceDateController.dispose();
+    _descriptionController.dispose();
     _amountAnimationController.dispose();
     super.dispose();
   }

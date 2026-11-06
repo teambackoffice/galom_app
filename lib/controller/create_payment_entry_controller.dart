@@ -17,6 +17,8 @@ class CraetePaymentEntryController with ChangeNotifier {
     required List<Map<String, dynamic>> invoiceAllocations,
     String? referenceNumber,
     String? referenceDate,
+    String? chequeClearanceDate,
+    String? description,
   }) async {
     isLoading = true;
     errorMessage = null;
@@ -31,6 +33,8 @@ class CraetePaymentEntryController with ChangeNotifier {
         invoiceAllocations: invoiceAllocations,
         referenceNumber: referenceNumber,
         referenceDate: referenceDate,
+        chequeClearanceDate: chequeClearanceDate,
+        description: description,
       );
 
       if (response.statusCode == 200) {

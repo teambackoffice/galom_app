@@ -4,10 +4,6 @@ import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
-    id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
-    
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -39,7 +35,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.location_tracker_app"
+        applicationId = "com.tbo_galom"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = 6

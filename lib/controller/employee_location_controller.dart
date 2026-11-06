@@ -6,6 +6,12 @@ import 'package:location_tracker_app/service/employee_location_service.dart';
 import 'package:location_tracker_app/service/location_interval_service.dart';
 
 class LocationController extends ChangeNotifier {
+  /// Automatic background location tracking ("Track" entries sent every
+  /// interval). Not used in the Galom app, so it's switched off: nothing is
+  /// sent, and tracking left running from an older install is stopped.
+  /// Check-in / check-out still capture their own location.
+  static const bool liveTrackingEnabled = false;
+
   static const MethodChannel _channel = MethodChannel('location_tracking');
   final EmployeeLocationService _service = EmployeeLocationService();
   final LocationIntervalService _intervalService = LocationIntervalService();
@@ -207,6 +213,12 @@ class LocationController extends ChangeNotifier {
         isTracking = savedState == 'true';
         print("📱 Loaded tracking state: $isTracking");
 
+        if (isTracking && !liveTrackingEnabled) {
+          // Started by an older version of the app: shut it down.
+          await stopLiveTracking();
+          return;
+        }
+
         // If the app was tracking when closed, resume tracking
         if (isTracking) {
           print("🔄 Resuming background tracking...");
@@ -268,6 +280,14 @@ class LocationController extends ChangeNotifier {
   }
 
   Future<void> _handleLocationUpdate(Map<dynamic, dynamic> locationData) async {
+    if (!liveTrackingEnabled) {
+      // A native tracker is still running somehow: stop it, send nothing.
+      if (isTracking) await stopLiveTracking();
+      try {
+        await _channel.invokeMethod('stopLocationTracking');
+      } catch (_) {}
+      return;
+    }
     print("🎯 _handleLocationUpdate called with: $locationData");
 
     try {
@@ -621,6 +641,7 @@ class LocationController extends ChangeNotifier {
   // Live tracking only (no Check In / Check Out entries) — used by the
   // attendance page, which records check-in/out through the attendance API.
   Future<void> startLiveTracking() async {
+    if (!liveTrackingEnabled) return;
     try {
       if (!_intervalLoaded) await _loadTrackingIntervalFromAPI();
       if (!await requestPermissions()) return;

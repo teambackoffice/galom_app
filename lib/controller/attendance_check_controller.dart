@@ -195,10 +195,16 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
   // ── POST: Check In ──────────────────────────────────────────────────────────
   /// [km] is the odometer reading entered by the user.
-  /// [photo] is an optional image captured via camera or picked from gallery.
+  /// [photo] is a mandatory image captured via the camera.
   Future<void> startTracking({required String km, File? photo}) async {
     if (employeeId.isEmpty) {
       error = 'Employee ID is not set.';
+      notifyListeners();
+      return;
+    }
+
+    if (photo == null) {
+      error = 'A photo is required.';
       notifyListeners();
       return;
     }
@@ -248,10 +254,16 @@ class UpdatedAttendanceController extends ChangeNotifier {
 
   // ── POST: Check Out ─────────────────────────────────────────────────────────
   /// [km] is the odometer reading entered by the user.
-  /// [photo] is an optional image captured via camera or picked from gallery.
+  /// [photo] is a mandatory image captured via the camera.
   Future<void> stopTracking({required String km, File? photo}) async {
     if (employeeId.isEmpty) {
       error = 'Employee ID is not set.';
+      notifyListeners();
+      return;
+    }
+
+    if (photo == null) {
+      error = 'A photo is required.';
       notifyListeners();
       return;
     }

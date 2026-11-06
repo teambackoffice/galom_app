@@ -5,15 +5,18 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:location_tracker_app/controller/attendance_check_controller.dart';
+import 'package:location_tracker_app/controller/customer_log_visit_controller.dart';
+import 'package:location_tracker_app/view/mainscreen/location_track/counter_meeting_widgets.dart';
 import 'package:location_tracker_app/controller/employee_location_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:location_tracker_app/view/mainscreen/location_track/complaints/customer_complaints.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_log.dart';
 import 'package:location_tracker_app/view/mainscreen/location_track/customer_visit_timer.dart';
 
 // Employee ID is read from secure storage by AttendanceService directly.
 //
 // NOTE ON CONTROLLER CHANGES NEEDED:
-// This page now collects a KM reading and an optional photo before
+// This page now collects an optional KM reading and a mandatory photo before
 // checking in / out. For this to actually persist, update
 // UpdatedAttendanceController so that:
 //   - startTracking({ required String km, File? photo })
@@ -74,6 +77,8 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
     // Bootstrap: fetch real status from the server.
     // employee_id is read from secure storage by AttendanceService.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Remind about a counter meeting left without a remark (app restarted).
+      context.read<LogCustomerVisitController>().loadOpenVisit();
       await context.read<UpdatedAttendanceController>().init();
       await _syncLiveTracking();
     });
@@ -182,6 +187,7 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
                             _buildHeader(ctrl),
                             const SizedBox(height: 8),
                             _buildStatusBadge(ctrl),
+                            const PendingMeetingReminder(),
                             const SizedBox(height: 20),
                             _buildMainCard(ctrl, isIn),
                             const SizedBox(height: 16),
@@ -296,6 +302,23 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
             ],
           ),
         ),
+        PopupMenuItem(
+          value: 'complaints',
+          child: Row(
+            children: [
+              Icon(
+                Icons.report_problem_outlined,
+                size: 18,
+                color: Color(0xFF0D1B3E),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Customer Complaints',
+                style: TextStyle(fontSize: 14, color: Color(0xFF0D1B3E)),
+              ),
+            ],
+          ),
+        ),
         // PopupMenuItem(
         //   value: 'customer_timer',
         //   child: Row(
@@ -315,6 +338,11 @@ class _LocationTrackingPageState extends State<LocationTrackingPage>
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => CustomerVisitLogger()),
+          );
+        } else if (v == 'complaints') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CustomerComplaintsPage()),
           );
         } else {
           Navigator.push(
@@ -798,9 +826,13 @@ class _CheckActionDialogState extends State<_CheckActionDialog> {
       return;
     }
 
-    // At least one of KM or photo is required — not both.
-    if (!hasKm && !hasPhoto) {
-      setState(() => _generalError = 'Enter your KM reading or add a photo');
+    // Photo is mandatory for both check-in and check-out.
+    if (!hasPhoto) {
+      setState(
+        () => _generalError = widget.isCheckIn
+            ? 'Please take a photo to check in'
+            : 'Please take a photo to check out',
+      );
       return;
     }
 
@@ -827,8 +859,8 @@ class _CheckActionDialogState extends State<_CheckActionDialog> {
           children: [
             Text(
               widget.isCheckIn
-                  ? 'Enter your odometer KM or add a photo to check in.'
-                  : 'Enter your odometer KM or add a photo to check out.',
+                  ? 'A photo is required to check in. KM reading is optional.'
+                  : 'A photo is required to check out. KM reading is optional.',
               style: const TextStyle(fontSize: 13, color: Color(0xFF636E72)),
             ),
             const SizedBox(height: 16),
@@ -875,7 +907,7 @@ class _CheckActionDialogState extends State<_CheckActionDialog> {
                     ? null
                     : () => _pickImage(ImageSource.camera),
                 icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                label: const Text('Camera'),
+                label: Text(_photo == null ? 'Take Photo *' : 'Retake Photo'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFF0D1B3E),
                   side: const BorderSide(color: Color(0xFFE0E4EF)),

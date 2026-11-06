@@ -1,14 +1,10 @@
 import Flutter
 import UIKit
-import FirebaseCore
-import FirebaseMessaging
 import UserNotifications
 import CoreLocation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, CLLocationManagerDelegate {
-    // Firebase and notification properties (existing)
-    
     // Location tracking properties (new)
     private var locationManager: CLLocationManager?
     private var methodChannel: FlutterMethodChannel?
@@ -23,12 +19,8 @@ import CoreLocation
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
-        // Firebase setup (existing)
-        FirebaseApp.configure()
-
-        // Firebase notifications setup (existing)
+        // Local notifications setup
         UNUserNotificationCenter.current().delegate = self
-        application.registerForRemoteNotifications()
 
         // Location tracking setup (new)
         setupLocationManager()
@@ -356,16 +348,7 @@ import CoreLocation
         methodChannel?.invokeMethod("onTrackingError", arguments: error)
     }
 
-    // MARK: - Firebase Notifications (EXISTING - Keep as is)
-    
-    // Forward APNs token to Firebase
-    override func application(
-        _ application: UIApplication,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-    ) {
-        Messaging.messaging().apnsToken = deviceToken
-        super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
-    }
+    // MARK: - Notifications
 
     // Show notifications in foreground
     override func userNotificationCenter(_ center: UNUserNotificationCenter,

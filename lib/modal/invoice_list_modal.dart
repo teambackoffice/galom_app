@@ -60,19 +60,25 @@ class Invoice {
     required this.payments,
   });
 
-  factory Invoice.fromJson(Map<String, dynamic> json) => Invoice(
-    invoiceId: json["invoice_id"],
-    customer: json["customer"],
-    postingDate: DateTime.parse(json["posting_date"]),
-    dueDate: DateTime.parse(json["due_date"]),
-    grandTotal: json["grand_total"].toDouble(),
-    outstandingAmount: json["outstanding_amount"].toDouble(),
-    status: json["status"],
-    items: List<Item>.from(json["items"].map((x) => Item.fromJson(x))),
-    payments: List<Payment>.from(
-      json["payments"].map((x) => Payment.fromJson(x)),
-    ),
-  );
+  factory Invoice.fromJson(Map<String, dynamic> json) {
+    final postingDate =
+        DateTime.tryParse(json["posting_date"] ?? '') ?? DateTime.now();
+    return Invoice(
+      invoiceId: json["invoice_id"] ?? '',
+      customer: json["customer"] ?? '',
+      postingDate: postingDate,
+      dueDate: DateTime.tryParse(json["due_date"] ?? '') ?? postingDate,
+      grandTotal: (json["grand_total"] as num?)?.toDouble() ?? 0,
+      outstandingAmount: (json["outstanding_amount"] as num?)?.toDouble() ?? 0,
+      status: json["status"] ?? '',
+      items: List<Item>.from(
+        (json["items"] ?? []).map((x) => Item.fromJson(x)),
+      ),
+      payments: List<Payment>.from(
+        (json["payments"] ?? []).map((x) => Payment.fromJson(x)),
+      ),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     "invoice_id": invoiceId,
@@ -107,12 +113,12 @@ class Item {
   });
 
   factory Item.fromJson(Map<String, dynamic> json) => Item(
-    itemCode: json["item_code"],
-    itemName: json["item_name"],
-    qty: json["qty"].toDouble(),
-    rate: json["rate"].toDouble(),
-    amount: json["amount"].toDouble(),
-    description: json["description"],
+    itemCode: json["item_code"] ?? '',
+    itemName: json["item_name"] ?? '',
+    qty: (json["qty"] as num?)?.toDouble() ?? 0,
+    rate: (json["rate"] as num?)?.toDouble() ?? 0,
+    amount: (json["amount"] as num?)?.toDouble() ?? 0,
+    description: json["description"] ?? '',
   );
 
   Map<String, dynamic> toJson() => {
@@ -143,12 +149,13 @@ class Payment {
   });
 
   factory Payment.fromJson(Map<String, dynamic> json) => Payment(
-    paymentEntry: json["payment_entry"],
-    postingDate: DateTime.parse(json["posting_date"]),
+    paymentEntry: json["payment_entry"] ?? '',
+    postingDate:
+        DateTime.tryParse(json["posting_date"] ?? '') ?? DateTime.now(),
     modeOfPayment: json["mode_of_payment"],
-    paidAmount: json["paid_amount"].toDouble(),
-    allocatedAmount: json["allocated_amount"].toDouble(),
-    status: json["status"],
+    paidAmount: (json["paid_amount"] as num?)?.toDouble() ?? 0,
+    allocatedAmount: (json["allocated_amount"] as num?)?.toDouble() ?? 0,
+    status: json["status"] ?? '',
   );
 
   Map<String, dynamic> toJson() => {
