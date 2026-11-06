@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:location_tracker_app/controller/customer_list_controller.dart';
 import 'package:location_tracker_app/controller/customer_log_visit_controller.dart';
 import 'package:location_tracker_app/modal/customer_list_modal.dart';
+import 'package:location_tracker_app/view/mainscreen/location_track/counter_meeting_widgets.dart';
 import 'package:provider/provider.dart';
 
 enum _VisitType {
@@ -80,6 +81,8 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
     // Fetch customer list when widget initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<GetCustomerListController>().fetchCustomerList();
+      // Restore a first/last counter meeting left open (e.g. app was closed).
+      context.read<LogCustomerVisitController>().loadOpenVisit();
     });
   }
 
@@ -319,6 +322,14 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
                 if (_isSubmitting || controller.isLoading)
                   const LinearProgressIndicator(),
 
+                if (controller.openVisit != null) ...[
+                  const SizedBox(height: 16),
+                  OpenMeetingCard(
+                    key: ValueKey(controller.openVisit!.name),
+                    visit: controller.openVisit!,
+                  ),
+                ],
+
                 const SizedBox(height: 16),
 
                 Container(
@@ -492,7 +503,9 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
                               ),
                       ),
                       const SizedBox(height: 10),
-                      _buildVisitTypeSelector(enabled: !_isSubmitting),
+                      _buildVisitTypeSelector(
+                        enabled: !_isSubmitting && controller.openVisit == null,
+                      ),
 
                       AnimatedSize(
                         duration: const Duration(milliseconds: 250),
@@ -1016,7 +1029,13 @@ class _CustomerVisitLoggerState extends State<CustomerVisitLogger> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  selected == null
+                  !enabled &&
+                          context
+                                  .read<LogCustomerVisitController>()
+                                  .openVisit !=
+                              null
+                      ? 'Finish the open counter meeting before checking in again'
+                      : selected == null
                       ? 'Select only if this is your first or last visit today'
                       : '${selected.hint} · tap again to unselect',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600]),

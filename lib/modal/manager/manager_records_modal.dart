@@ -75,6 +75,10 @@ class CustomerVisit {
   final String? visitPhoto;
   final String visitType;
 
+  /// Check-out for first/last counter meetings; null while still open.
+  final DateTime? checkoutAt;
+  final String meetingRemarks;
+
   const CustomerVisit({
     required this.name,
     required this.salesPerson,
@@ -92,7 +96,18 @@ class CustomerVisit {
     required this.isLastCounter,
     required this.visitPhoto,
     required this.visitType,
+    this.checkoutAt,
+    this.meetingRemarks = '',
   });
+
+  bool get isCounterVisit => isFirstCounter || isLastCounter;
+
+  /// Meeting length, when both check-in and check-out are known.
+  Duration? get meetingDuration {
+    if (visitedAt == null || checkoutAt == null) return null;
+    final d = checkoutAt!.difference(visitedAt!);
+    return d.isNegative ? null : d;
+  }
 
   String get salesPersonDisplay =>
       salesPersonLabel(salesPerson, salesPersonName);
@@ -120,6 +135,12 @@ class CustomerVisit {
       isLastCounter: asFlag(json['is_last_counter']),
       visitPhoto: asStringOrNull(json['visit_photo']),
       visitType: asString(json['visit_type']).trim(),
+      // Only treat the meeting as checked out once it has a remark: some
+      // servers fill checkout_time in at check-in.
+      checkoutAt: asString(json['meeting_remarks']).trim().isEmpty
+          ? null
+          : combineDateAndTime(date, asString(json['checkout_time'])),
+      meetingRemarks: asString(json['meeting_remarks']).trim(),
     );
   }
 }

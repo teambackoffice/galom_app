@@ -94,9 +94,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not pick image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not pick image: $e')));
     }
   }
 
@@ -114,9 +114,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not pick video: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not pick video: $e')));
     }
   }
 
@@ -217,7 +217,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isSubmitting = context.watch<CustomerComplaintController>().isSubmitting;
+    final isSubmitting = context
+        .watch<CustomerComplaintController>()
+        .isSubmitting;
 
     return Scaffold(
       backgroundColor: ComplaintStyle.background,
@@ -282,8 +284,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ComplaintStyle.navy,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          ComplaintStyle.navy.withOpacity(0.6),
+                      disabledBackgroundColor: ComplaintStyle.navy.withOpacity(
+                        0.6,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -343,8 +346,8 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
                 color: _customerError
                     ? const Color(0xFFB71C1C)
                     : hasCustomer
-                        ? ComplaintStyle.navy.withOpacity(0.3)
-                        : ComplaintStyle.border,
+                    ? ComplaintStyle.navy.withOpacity(0.3)
+                    : ComplaintStyle.border,
               ),
             ),
             child: Row(
@@ -376,8 +379,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
                             : 'Select customer',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight:
-                              hasCustomer ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: hasCustomer
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           color: hasCustomer
                               ? ComplaintStyle.navy
                               : ComplaintStyle.muted,
@@ -660,9 +664,9 @@ class _CreateComplaintPageState extends State<CreateComplaintPage> {
     String? Function(String?)? validator,
   }) {
     OutlineInputBorder border(Color c, [double w = 1]) => OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: c, width: w),
-        );
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: c, width: w),
+    );
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
@@ -707,11 +711,13 @@ class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
     final filtered = q.isEmpty
         ? all
         : all
-            .where((c) =>
-                c.customerName.toLowerCase().contains(q) ||
-                c.name.toLowerCase().contains(q) ||
-                (c.mobileNo ?? '').contains(q))
-            .toList();
+              .where(
+                (c) =>
+                    c.customerName.toLowerCase().contains(q) ||
+                    c.name.toLowerCase().contains(q) ||
+                    (c.mobileNo ?? '').contains(q),
+              )
+              .toList();
 
     return DraggableScrollableSheet(
       initialChildSize: 0.85,
@@ -775,65 +781,65 @@ class _CustomerPickerSheetState extends State<_CustomerPickerSheet> {
                       ),
                     )
                   : ctrl.error != null && all.isEmpty
-                      ? Center(
-                          child: TextButton.icon(
-                            onPressed: ctrl.fetchCustomerList,
-                            icon: const Icon(Icons.refresh_rounded),
-                            label: const Text('Could not load customers. Retry'),
-                          ),
-                        )
-                      : filtered.isEmpty
-                          ? const Center(
-                              child: Text(
-                                'No customers found',
-                                style: TextStyle(color: ComplaintStyle.muted),
-                              ),
-                            )
-                          : ListView.separated(
-                              controller: scroll,
-                              padding: const EdgeInsets.only(bottom: 24),
-                              itemCount: filtered.length,
-                              separatorBuilder: (_, __) => const Divider(
-                                height: 1,
-                                indent: 72,
-                                color: ComplaintStyle.border,
-                              ),
-                              itemBuilder: (_, i) {
-                                final c = filtered[i];
-                                return ListTile(
-                                  onTap: () => Navigator.pop(context, c),
-                                  leading: CircleAvatar(
-                                    backgroundColor:
-                                        ComplaintStyle.navy.withOpacity(0.08),
-                                    child: Text(
-                                      c.customerName.isNotEmpty
-                                          ? c.customerName[0].toUpperCase()
-                                          : '?',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: ComplaintStyle.navy,
-                                      ),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    c.customerName,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: ComplaintStyle.navy,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    [
-                                      c.name,
-                                      if (c.mobileNo?.isNotEmpty ?? false)
-                                        c.mobileNo!,
-                                    ].join('  •  '),
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                );
-                              },
+                  ? Center(
+                      child: TextButton.icon(
+                        onPressed: ctrl.fetchCustomerList,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Could not load customers. Retry'),
+                      ),
+                    )
+                  : filtered.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'No customers found',
+                        style: TextStyle(color: ComplaintStyle.muted),
+                      ),
+                    )
+                  : ListView.separated(
+                      controller: scroll,
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const Divider(
+                        height: 1,
+                        indent: 72,
+                        color: ComplaintStyle.border,
+                      ),
+                      itemBuilder: (_, i) {
+                        final c = filtered[i];
+                        return ListTile(
+                          onTap: () => Navigator.pop(context, c),
+                          leading: CircleAvatar(
+                            backgroundColor: ComplaintStyle.navy.withOpacity(
+                              0.08,
                             ),
+                            child: Text(
+                              c.customerName.isNotEmpty
+                                  ? c.customerName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: ComplaintStyle.navy,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            c.customerName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: ComplaintStyle.navy,
+                            ),
+                          ),
+                          subtitle: Text(
+                            [
+                              c.name,
+                              if (c.mobileNo?.isNotEmpty ?? false) c.mobileNo!,
+                            ].join('  •  '),
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ],
         ),

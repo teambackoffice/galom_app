@@ -81,10 +81,12 @@ class _CustomerComplaintsPageState extends State<CustomerComplaintsPage> {
     final q = _query.toLowerCase();
     if (q.isEmpty) return ctrl.complaints;
     return ctrl.complaints
-        .where((c) =>
-            c.subject.toLowerCase().contains(q) ||
-            c.displayCustomer.toLowerCase().contains(q) ||
-            c.name.toLowerCase().contains(q))
+        .where(
+          (c) =>
+              c.subject.toLowerCase().contains(q) ||
+              c.displayCustomer.toLowerCase().contains(q) ||
+              c.name.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -212,10 +214,7 @@ class _CustomerComplaintsPageState extends State<CustomerComplaintsPage> {
                   child: Text(
                     label,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.white70,
-                    ),
+                    style: const TextStyle(fontSize: 11, color: Colors.white70),
                   ),
                 ),
               ],
@@ -299,7 +298,9 @@ class _CustomerComplaintsPageState extends State<CustomerComplaintsPage> {
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 10),
               child: Text(
-                _query.isEmpty ? 'Recent complaints' : '${items.length} results',
+                _query.isEmpty
+                    ? 'Recent complaints'
+                    : '${items.length} results',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

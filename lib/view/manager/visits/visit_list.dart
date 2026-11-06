@@ -139,7 +139,34 @@ class VisitBadges extends StatelessWidget {
             icon: Icons.sports_score_rounded,
             color: MColors.orange,
           ),
+        if (visit.isCounterVisit)
+          visit.checkoutAt == null
+              ? (DateUtils.isSameDay(visit.date, DateTime.now())
+                    ? const MBadge(
+                        'In meeting',
+                        icon: Icons.timelapse_rounded,
+                        color: MColors.purple,
+                      )
+                    : const MBadge(
+                        'No check-out',
+                        icon: Icons.timer_off_outlined,
+                        color: MColors.grey,
+                      ))
+              : MBadge(
+                  visit.meetingDuration != null
+                      ? 'Met ${_meetingLength(visit.meetingDuration!)}'
+                      : 'Checked out',
+                  icon: Icons.task_alt_rounded,
+                  color: MColors.green,
+                ),
       ],
     );
   }
+}
+
+String _meetingLength(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  if (h > 0) return '${h}h ${m}m';
+  return '${d.inMinutes} min';
 }

@@ -65,6 +65,34 @@ class ManagerVisitDetailScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (v.isCounterVisit)
+            SectionCard(
+              title: 'Counter meeting',
+              children: [
+                InfoRow('Check-in', MFormat.time(v.visitedAt)),
+                InfoRow(
+                  'Check-out',
+                  v.checkoutAt != null
+                      ? MFormat.time(v.checkoutAt)
+                      : DateUtils.isSameDay(v.date, DateTime.now())
+                      ? 'Meeting in progress'
+                      : 'Not recorded',
+                ),
+                if (v.meetingDuration != null)
+                  InfoRow('Duration', _formatDuration(v.meetingDuration!)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: Text(
+                    v.meetingRemarks.isNotEmpty
+                        ? v.meetingRemarks
+                        : 'No meeting remarks yet.',
+                    style: v.meetingRemarks.isNotEmpty
+                        ? MText.body
+                        : MText.meta,
+                  ),
+                ),
+              ],
+            ),
           SectionCard(
             title: 'Visit details',
             children: [
@@ -112,6 +140,14 @@ class ManagerVisitDetailScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatDuration(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  if (h > 0) return '${h}h ${m}m';
+  if (d.inMinutes > 0) return '${d.inMinutes} min';
+  return '${d.inSeconds} sec';
 }
 
 class _HeroMeta extends StatelessWidget {

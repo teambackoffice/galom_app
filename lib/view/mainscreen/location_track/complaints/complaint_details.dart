@@ -19,9 +19,9 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context
-          .read<CustomerComplaintController>()
-          .fetchDetail(widget.complaintName);
+      context.read<CustomerComplaintController>().fetchDetail(
+        widget.complaintName,
+      );
     });
   }
 
@@ -95,10 +95,12 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
               child: Column(
                 children: [
                   _row('Customer', c.displayCustomer),
-                  if (c.customerName.isNotEmpty &&
-                      c.customerName != c.customer)
+                  if (c.customerName.isNotEmpty && c.customerName != c.customer)
                     _row('Customer ID', c.customer),
-                  _row('Complaint Date', ComplaintStyle.formatDate(c.complaintDate)),
+                  _row(
+                    'Complaint Date',
+                    ComplaintStyle.formatDate(c.complaintDate),
+                  ),
                   _row('Type', c.complaintType),
                   _row('Priority', c.priority),
                   _row('Sales Invoice', c.salesInvoice),
@@ -133,7 +135,10 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
                         ),
                       ),
                     _row('Resolved By', c.resolvedBy),
-                    _row('Resolved On', ComplaintStyle.formatDate(c.resolvedOn)),
+                    _row(
+                      'Resolved On',
+                      ComplaintStyle.formatDate(c.resolvedOn),
+                    ),
                   ],
                 ),
               ),
@@ -236,7 +241,10 @@ class _ComplaintDetailsPageState extends State<ComplaintDetailsPage> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),

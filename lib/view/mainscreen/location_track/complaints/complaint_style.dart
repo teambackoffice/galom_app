@@ -76,16 +76,16 @@ class ComplaintStyle {
       d == null ? '-' : DateFormat('dd MMM yyyy, hh:mm a').format(d);
 
   static BoxDecoration card() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: navy.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+      BoxShadow(
+        color: navy.withOpacity(0.06),
+        blurRadius: 12,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  );
 }
 
 class ComplaintPill extends StatelessWidget {

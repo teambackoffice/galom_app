@@ -31,7 +31,10 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
     super.initState();
     _loadActiveVisit();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<GetCustomerListController>(context, listen: false).fetchCustomerList();
+      Provider.of<GetCustomerListController>(
+        context,
+        listen: false,
+      ).fetchCustomerList();
     });
   }
 
@@ -184,21 +187,28 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
       builder: (context) {
         return Consumer<GetCustomerListController>(
           builder: (context, customerListController, child) {
-            final allCustomers = customerListController.customerlist?.message.message ?? [];
+            final allCustomers =
+                customerListController.customerlist?.message.message ?? [];
             final isLoading = customerListController.isLoading;
 
             return StatefulBuilder(
               builder: (context, setModalState) {
                 final query = _customerController.text.toLowerCase().trim();
                 final filteredCustomers = allCustomers.where((customer) {
-                  final nameMatch = customer.customerName.toLowerCase().contains(query);
-                  final mobileMatch = customer.mobileNo?.contains(query) ?? false;
-                  final emailMatch = customer.emailId?.toLowerCase().contains(query) ?? false;
+                  final nameMatch = customer.customerName
+                      .toLowerCase()
+                      .contains(query);
+                  final mobileMatch =
+                      customer.mobileNo?.contains(query) ?? false;
+                  final emailMatch =
+                      customer.emailId?.toLowerCase().contains(query) ?? false;
                   return nameMatch || mobileMatch || emailMatch;
                 }).toList();
 
                 // Show dropdown when the text field has content or the list is loaded and not empty
-                final showDropdown = _customerController.text.isNotEmpty && allCustomers.isNotEmpty;
+                final showDropdown =
+                    _customerController.text.isNotEmpty &&
+                    allCustomers.isNotEmpty;
 
                 return AlertDialog(
                   shape: RoundedRectangleBorder(
@@ -215,12 +225,19 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                           ),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Icons.person_add, color: Colors.white, size: 32),
+                        child: Icon(
+                          Icons.person_add,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                       SizedBox(height: 16),
                       Text(
                         'Check In to Customer',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -247,17 +264,19 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                                     ? SizedBox(
                                         width: 18,
                                         height: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
                                       )
                                     : _customerController.text.isNotEmpty
-                                        ? IconButton(
-                                            icon: Icon(Icons.clear, size: 18),
-                                            onPressed: () {
-                                              _customerController.clear();
-                                              setModalState(() {});
-                                            },
-                                          )
-                                        : null,
+                                    ? IconButton(
+                                        icon: Icon(Icons.clear, size: 18),
+                                        onPressed: () {
+                                          _customerController.clear();
+                                          setModalState(() {});
+                                        },
+                                      )
+                                    : null,
                                 filled: true,
                                 fillColor: Colors.grey.shade50,
                               ),
@@ -268,7 +287,10 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                               Center(
                                 child: Text(
                                   'Loading customer list...',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             ] else if (showDropdown) ...[
@@ -278,7 +300,9 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.08),
@@ -292,7 +316,9 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                                         padding: const EdgeInsets.all(16.0),
                                         child: Text(
                                           'No customers found',
-                                          style: TextStyle(color: Colors.grey.shade600),
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                          ),
                                         ),
                                       )
                                     : ListView.builder(
@@ -300,18 +326,30 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                                         padding: EdgeInsets.zero,
                                         itemCount: filteredCustomers.length,
                                         itemBuilder: (context, index) {
-                                          final customer = filteredCustomers[index];
+                                          final customer =
+                                              filteredCustomers[index];
                                           return ListTile(
-                                            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                                  horizontal: 16,
+                                                  vertical: 4,
+                                                ),
                                             title: Text(
                                               customer.customerName,
-                                              style: TextStyle(fontWeight: FontWeight.w500),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
-                                            subtitle: (customer.mobileNo != null && customer.mobileNo!.isNotEmpty)
+                                            subtitle:
+                                                (customer.mobileNo != null &&
+                                                    customer
+                                                        .mobileNo!
+                                                        .isNotEmpty)
                                                 ? Text(customer.mobileNo!)
                                                 : null,
                                             onTap: () {
-                                              _customerController.text = customer.customerName;
+                                              _customerController.text =
+                                                  customer.customerName;
                                               // Close dropdown by triggering rebuild with empty text or custom state
                                               setModalState(() {});
                                             },
@@ -348,14 +386,20 @@ class _CustomerVisitTimerPageState extends State<CustomerVisitTimerPage> {
                         _purposeController.clear();
                         Navigator.pop(context);
                       },
-                      child: Text('Cancel', style: TextStyle(color: Colors.grey)),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                     ElevatedButton(
                       onPressed: _checkInToCustomer,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFF764ba2),
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

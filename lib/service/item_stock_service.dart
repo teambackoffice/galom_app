@@ -11,11 +11,10 @@ class ItemStockService {
 
   Future<ItemStockModal> getAllStockItems() async {
     try {
-
       final response = await http.get(Uri.parse(baseUrl));
 
-
       if (response.statusCode == 200) {
+        print("response of metta.cloud$response");
         return ItemStockModal.fromJson(json.decode(response.body));
       } else {
         throw Exception("API Error: ${response.statusCode}");
